@@ -26,6 +26,7 @@ typedef struct Theme {
 
 typedef struct Font {
     std::string family;
+    std::string style;
     Color color;
     bool ligatures;
     Uint8 size;
@@ -126,6 +127,7 @@ inline constexpr const char *HOVER_TAB_BACKGROUND = "hover_tab_background";
 
 namespace font {
 inline constexpr const char *FAMILY = "font_family";
+inline constexpr const char *STYLE = "font_style";
 inline constexpr const char *COLOR = "font_color";
 inline constexpr const char *LIGATURES = "font_ligatures";
 inline constexpr const char *SIZE = "font_size";
@@ -203,6 +205,7 @@ inline constexpr const Color HOVER_TAB_BACKGROUND = (Color){42, 45, 46, DEFAULT_
 
 namespace font {
 inline constexpr const char *FAMILY = "Arial";
+inline constexpr const char *STYLE = "Regular";
 inline constexpr const Color COLOR = (Color){212, 212, 212, DEFAULT_OPACITY};
 inline constexpr const bool LIGATURES = false;
 inline constexpr const Uint16 SIZE = 14;

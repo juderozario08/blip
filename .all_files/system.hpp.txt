@@ -1,6 +1,6 @@
 #include <string>
 
 namespace platform {
-std::string getTTFPath(const std::string &a_family, const std::string &a_style);
+std::string getTTFPath(const std::string &family, const std::string &style);
 void readFile(const char *filename, std::string &lines);
 }

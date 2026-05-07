@@ -237,6 +237,8 @@ void handleFontConfigUpdates(std::string key, std::string value, EditorConfig &s
     if (key == constants::font::FAMILY) {
         // TODO: MAKE SURE TO CHECK IF THE "VALUE = FONT" FIRST EXISTS OR NOT
         state.font.family = value.length() > 0 ? value : defaults::font::FAMILY;
+    } else if (key == constants::font::STYLE) {
+        state.font.style = value.length() > 0 ? value : defaults::font::STYLE;
     } else if (key == constants::font::COLOR) {
         handleColorUpdate(value, &state.font.color, defaults::font::COLOR);
     } else if (key == constants::font::LIGATURES) {

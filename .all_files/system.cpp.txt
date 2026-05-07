@@ -4,7 +4,7 @@
 #include <iostream>
 
 namespace platform {
-std::string getTTFPath(std::string &family) {
+std::string getTTFPath(std::string &family, std::string &style) {
     std::string file = "";
     for (const auto c : family) {
         if (c != ' ') {

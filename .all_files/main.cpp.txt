@@ -34,7 +34,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     SDL_Event event;
 
     text::FontManager fonts;
-    fonts.updateFontFamily(state.font.family, state.font.size);
+    fonts.updateFont(state.font.family, state.font.style, state.font.size);
 
     bool dirty = true;
 
@@ -52,7 +52,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                 }
             } else if (event.type == SDL_TEXTINPUT) {
                 std::string text = event.text.text;
-                if (vim.mode == VimMode::INSERT) {
+                if (!state.input.vim_mode || (state.input.vim_mode && vim.mode == VimMode::INSERT)) {
                     std::cout << text << std::endl;
                     buffer.insertText(text);
                     dirty = true;
@@ -217,7 +217,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
         watcher.check();
 
-        if (fonts.updateFontFamily(state.font.family, state.font.size)) {
+        if (fonts.updateFont(state.font.family, state.font.style, state.font.size)) {
             dirty = true;
         }
 
