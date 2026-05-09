@@ -1,7 +1,6 @@
 #include <blip/config/editor.hpp>
 #include <blip/platform/system.hpp>
 #include <blip/text/font_manager.hpp>
-#include <fontconfig/fontconfig.h>
 #include <iostream>
 
 namespace text {
@@ -96,7 +95,7 @@ bool FontManager::updateFontFamily(const std::string &family, int size) {
 
     if (fonts[static_cast<int>(FontStyles::Regular)] == nullptr) {
         std::cerr << "CRITICAL: Could not find or synthesize base font for: " << family << std::endl;
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     return true;

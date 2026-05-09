@@ -10,9 +10,15 @@ if(APPLE)
     set(CMAKE_OSX_ARCHITECTURES "arm64")
 endif()
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2_ttf REQUIRED)
-find_package(Fontconfig REQUIRED)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build all third-party libs statically" FORCE)
+
+set(SDL_TEST OFF CACHE BOOL "Disable SDL tests" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "Build static SDL" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build static SDL" FORCE)
+set(SDL2TTF_SAMPLES OFF CACHE BOOL "Disable SDL_ttf samples" FORCE)
+
+add_subdirectory(third_party/SDL2)
+add_subdirectory(third_party/SDL2_ttf)
 
 set(CORE_SOURCES
     src/config/editor.cpp
@@ -29,26 +35,36 @@ set(CORE_SOURCES
 if (APPLE)
     list(APPEND CORE_SOURCES src/platform/darwin/watcher.cpp)
     list(APPEND CORE_SOURCES src/platform/darwin/system.cpp)
+
+    # Mac native font frameworks
+    find_library(CORETEXT_LIBRARY CoreText)
+    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+    set(PLATFORM_LIBS ${CORETEXT_LIBRARY} ${COREFOUNDATION_LIBRARY})
+
 elseif (UNIX AND NOT APPLE)
     list(APPEND CORE_SOURCES src/platform/linux/watcher.cpp)
     list(APPEND CORE_SOURCES src/platform/linux/system.cpp)
+
+    # Linux Fontconfig dependency
+    find_package(Fontconfig REQUIRED)
+    set(PLATFORM_LIBS Fontconfig::Fontconfig)
 endif()
 
-# Helper function to avoid repeating the same linking logic
-function(add_blip_executable name)
-    add_executable(${name} src/app/main.cpp ${CORE_SOURCES})
+function(add_blip_executable name entry_point)
+    add_executable(${name} ${entry_point} ${CORE_SOURCES})
     target_include_directories(${name} PRIVATE include)
+
     target_link_libraries(${name}
         PRIVATE
-            SDL2::SDL2
-            SDL2_ttf::SDL2_ttf
-            Fontconfig::Fontconfig
+            SDL2-static
+            SDL2_ttf
+            ${PLATFORM_LIBS}
     )
 endfunction()
 
-add_blip_executable(Blip)
+add_blip_executable(Blip src/app/main.cpp)
 
-add_blip_executable(BlipDev)
+add_blip_executable(BlipDev src/app/main.cpp)
 target_compile_definitions(BlipDev PRIVATE _DEV_)
 
-add_blip_executable(BlipTests)
+add_blip_executable(BlipTests tests/tests.cpp)
