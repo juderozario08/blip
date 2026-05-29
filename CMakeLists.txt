@@ -17,6 +17,13 @@ set(SDL_SHARED OFF CACHE BOOL "Build static SDL" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Build static SDL" FORCE)
 set(SDL2TTF_SAMPLES OFF CACHE BOOL "Disable SDL_ttf samples" FORCE)
 
+# --- CROSS-PLATFORM FIX ---
+# Linux Pipewire API updates often break older SDL2 audio code.
+# We dynamically disable Audio on Linux to ensure a clean, fast compile.
+if (UNIX AND NOT APPLE)
+    set(SDL_AUDIO OFF CACHE BOOL "Disable SDL Audio subsystem" FORCE)
+endif()
+
 add_subdirectory(third_party/SDL2)
 add_subdirectory(third_party/SDL2_ttf)
 

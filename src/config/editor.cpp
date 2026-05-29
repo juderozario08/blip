@@ -42,12 +42,12 @@ template <typename T> bool parseNum(std::string_view sub, T &out, int base = 10)
     return false;
 }
 
-std::optional<Color> hexToColor(std::string_view hex) {
+std::optional<SDL_Color> hexToColor(std::string_view hex) {
     if (hex.empty() || hex[0] != '#' || (hex.length() != 7 && hex.length() != 9)) {
         return std::nullopt;
     }
 
-    Color color;
+    SDL_Color color;
     if (!parseNum(hex.substr(1, 2), color.r, 16))
         return std::nullopt;
     if (!parseNum(hex.substr(3, 2), color.g, 16))
@@ -65,7 +65,7 @@ std::optional<Color> hexToColor(std::string_view hex) {
     return color;
 }
 
-void handleColorUpdate(std::string value, Color *color, Color def) {
+void handleColorUpdate(std::string value, SDL_Color *color, SDL_Color def) {
     if (auto c = hexToColor(value)) {
         *color = *c;
     } else {

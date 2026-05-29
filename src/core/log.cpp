@@ -6,7 +6,7 @@
 
 namespace core {
 template <typename T> void printVal(T value, const char *str) {
-    if constexpr (std::is_same_v<T, config::Color>) {
+    if constexpr (std::is_same_v<T, SDL_Color>) {
         printf("    %s = rgba(%u,%u,%u,%u)\n", str, value.r, value.g, value.b, value.a);
     } else if constexpr (std::is_same_v<Uint8, T> || std::is_same_v<Uint16, T>) {
         printf("    %s = %u\n", str, value);

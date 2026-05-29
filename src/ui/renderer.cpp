@@ -1,6 +1,4 @@
-#include <blip/text/font_manager.hpp>
 #include <blip/ui/renderer.hpp>
-#include <iostream>
 
 namespace ui {
 void drawBackground(app::AppState &appState, config::EditorConfig &state) {
@@ -9,30 +7,42 @@ void drawBackground(app::AppState &appState, config::EditorConfig &state) {
     SDL_RenderClear(appState.renderer);
 }
 
-void drawEditor(app::AppState &appState, config::EditorConfig &state, text::FontManager &fonts) {
+void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
+                text::Typesetter &typesetter) {
     TTF_Font *font = fonts.getFont();
-    if (font == NULL)
-        return;
-
-    SDL_Color textColor = {255, 255, 255, 255};
-    SDL_Surface *textSurface = TTF_RenderText_Blended(font, "Hello from the new UI module!", textColor);
-
-    if (textSurface == NULL) {
-        std::cerr << "Unable to render text surface! Error: " << TTF_GetError() << std::endl;
+    if (!font) {
         return;
     }
 
-    SDL_Texture *textTexture = SDL_CreateTextureFromSurface(appState.renderer, textSurface);
-    if (textTexture == NULL) {
-        std::cerr << "Unable to create texture! Error: " << SDL_GetError() << std::endl;
-        SDL_FreeSurface(textSurface);
-        return;
+    auto textColor = config.font.color;
+    auto cursorColor = {255, 255, 255, 50};
+    auto lines = typesetter.layout(buffer, config);
+
+    for (const auto &line : lines) {
+        if (line.text.empty()) {
+            continue;
+        }
+
+        SDL_Surface *lineSurface = TTF_RenderUTF8_Blended(font, line.text.c_str(), textColor);
+        if (lineSurface) {
+            auto *lineTexture = SDL_CreateTextureFromSurface(appState.renderer, lineSurface);
+            if (lineTexture) {
+                SDL_Rect destRect = {10, 10 + line.y_pixel_offset, lineSurface->w, lineSurface->h};
+                SDL_RenderCopy(appState.renderer, lineTexture, nullptr, &destRect);
+            }
+            SDL_DestroyTexture(lineTexture);
+        }
+        SDL_FreeSurface(lineSurface);
     }
 
-    SDL_Rect renderQuad = {10, 10, textSurface->w, textSurface->h};
-    SDL_RenderCopy(appState.renderer, textTexture, NULL, &renderQuad);
+    auto [cursorRow, cursorCol] = buffer.getCursorPosition2D();
+    int estimatedCharWidth = config.font.size / 2;
+    int lineHeight = config.font.size;
 
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
+    SDL_Rect cursorRect = {10 + (int)(cursorCol * estimatedCharWidth), 10 + (int)(cursorRow * lineHeight), estimatedCharWidth,
+                           lineHeight};
+    SDL_SetRenderDrawColor(appState.renderer, 255, 255, 255, 100);
+    SDL_SetRenderDrawBlendMode(appState.renderer, SDL_BLENDMODE_BLEND);
+    SDL_RenderFillRect(appState.renderer, &cursorRect);
 }
 }

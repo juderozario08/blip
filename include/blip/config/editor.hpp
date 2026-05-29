@@ -14,19 +14,15 @@ typedef struct Shortcut {
     SDL_Keycode key = SDLK_UNKNOWN;
 } Shortcut;
 
-typedef struct Color {
-    Uint8 r, g, b, a;
-} Color;
-
 typedef struct Theme {
-    Color background, foreground, cursor, selection, line_number, whitespace, diff_add, diff_remove, diff_change,
+    SDL_Color background, foreground, cursor, selection, line_number, whitespace, diff_add, diff_remove, diff_change,
         diagnostic_error, diagnostic_warning, diagnostic_info, popup_background, tooltip_border, completion_background,
         hover_tab_background;
 } Theme;
 
 typedef struct Font {
     std::string family;
-    Color color;
+    SDL_Color color;
     bool ligatures;
     Uint8 size;
     float line_height;
@@ -183,27 +179,27 @@ inline constexpr const char *SHOW_HIDDEN_FILES = "show_hidden_files";
 namespace defaults {
 inline constexpr const int DEFAULT_OPACITY = 255;
 namespace theme {
-inline constexpr const Color BACKGROUND = (Color){0, 0, 0, DEFAULT_OPACITY};
-inline constexpr const Color FOREGROUND = (Color){212, 212, 212, DEFAULT_OPACITY};
-inline constexpr const Color CURSOR = (Color){255, 255, 255, DEFAULT_OPACITY};
-inline constexpr const Color SELECTION = (Color){47, 47, 47, DEFAULT_OPACITY};
-inline constexpr const Color LINE_NUMBER = (Color){133, 133, 133, DEFAULT_OPACITY};
-inline constexpr const Color WHITESPACE = (Color){59, 59, 59, DEFAULT_OPACITY};
-inline constexpr const Color DIFF_ADD = (Color){88, 124, 12, DEFAULT_OPACITY};
-inline constexpr const Color DIFF_REMOVE = (Color){148, 21, 27, DEFAULT_OPACITY};
-inline constexpr const Color DIFF_CHANGE = (Color){0, 90, 158, DEFAULT_OPACITY};
-inline constexpr const Color DIAGNOSTIC_INFO = (Color){117, 190, 255, DEFAULT_OPACITY};
-inline constexpr const Color DIAGNOSTIC_ERROR = (Color){244, 135, 113, DEFAULT_OPACITY};
-inline constexpr const Color DIAGNOSTIC_WARNING = (Color){204, 167, 0, DEFAULT_OPACITY};
-inline constexpr const Color POPUP_BACKGROUND = (Color){37, 37, 38, DEFAULT_OPACITY};
-inline constexpr const Color TOOLTIP_BORDER = (Color){69, 69, 69, DEFAULT_OPACITY};
-inline constexpr const Color COMPLETION_BACKGROUND = (Color){45, 45, 48, DEFAULT_OPACITY};
-inline constexpr const Color HOVER_TAB_BACKGROUND = (Color){42, 45, 46, DEFAULT_OPACITY};
+inline constexpr const SDL_Color BACKGROUND = (SDL_Color){0, 0, 0, DEFAULT_OPACITY};
+inline constexpr const SDL_Color FOREGROUND = (SDL_Color){212, 212, 212, DEFAULT_OPACITY};
+inline constexpr const SDL_Color CURSOR = (SDL_Color){255, 255, 255, DEFAULT_OPACITY};
+inline constexpr const SDL_Color SELECTION = (SDL_Color){47, 47, 47, DEFAULT_OPACITY};
+inline constexpr const SDL_Color LINE_NUMBER = (SDL_Color){133, 133, 133, DEFAULT_OPACITY};
+inline constexpr const SDL_Color WHITESPACE = (SDL_Color){59, 59, 59, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIFF_ADD = (SDL_Color){88, 124, 12, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIFF_REMOVE = (SDL_Color){148, 21, 27, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIFF_CHANGE = (SDL_Color){0, 90, 158, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIAGNOSTIC_INFO = (SDL_Color){117, 190, 255, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIAGNOSTIC_ERROR = (SDL_Color){244, 135, 113, DEFAULT_OPACITY};
+inline constexpr const SDL_Color DIAGNOSTIC_WARNING = (SDL_Color){204, 167, 0, DEFAULT_OPACITY};
+inline constexpr const SDL_Color POPUP_BACKGROUND = (SDL_Color){37, 37, 38, DEFAULT_OPACITY};
+inline constexpr const SDL_Color TOOLTIP_BORDER = (SDL_Color){69, 69, 69, DEFAULT_OPACITY};
+inline constexpr const SDL_Color COMPLETION_BACKGROUND = (SDL_Color){45, 45, 48, DEFAULT_OPACITY};
+inline constexpr const SDL_Color HOVER_TAB_BACKGROUND = (SDL_Color){42, 45, 46, DEFAULT_OPACITY};
 }
 
 namespace font {
 inline constexpr const char *FAMILY = "Arial";
-inline constexpr const Color COLOR = (Color){212, 212, 212, DEFAULT_OPACITY};
+inline constexpr const SDL_Color COLOR = (SDL_Color){212, 212, 212, DEFAULT_OPACITY};
 inline constexpr const bool LIGATURES = false;
 inline constexpr const Uint16 SIZE = 14;
 inline constexpr const float LINE_HEIGHT = 1.5;

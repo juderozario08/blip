@@ -8,6 +8,7 @@
 #include <blip/platform/system.hpp>
 #include <blip/platform/watcher.hpp>
 #include <blip/text/font_manager.hpp>
+#include <blip/text/typesetter.hpp>
 #include <blip/ui/renderer.hpp>
 #include <cstdio>
 #include <iostream>
@@ -28,17 +29,19 @@ typedef struct {
     std::string keystroke_buffer;
 } Vim;
 
-void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &state,
+void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
                buffer::EditorBuffer &buffer) {
     auto running = true;
     SDL_Event event;
 
     text::FontManager fonts;
-    fonts.updateFontFamily(state.font.family, state.font.size);
+    fonts.updateFontFamily(config.font.family, config.font.size);
 
     bool dirty = true;
 
     auto vim = Vim{VimMode::NORMAL};
+
+    text::Typesetter typesetter;
 
     while (running) {
         SDL_WaitEventTimeout(NULL, 250);
@@ -81,7 +84,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                     }
                 }
             } else if (event.type == SDL_KEYDOWN) {
-                if (state.input.vim_mode) {
+                if (config.input.vim_mode) {
                     if (vim.mode == VimMode::NORMAL) {
                         if (event.key.keysym.sym == SDLK_u) {
                             buffer.undo();
@@ -217,12 +220,12 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
         watcher.check();
 
-        if (fonts.updateFontFamily(state.font.family, state.font.size)) {
+        if (fonts.updateFontFamily(config.font.family, config.font.size)) {
             dirty = true;
         }
 
-        ui::drawBackground(appState, state);
-        ui::drawEditor(appState, state, fonts);
+        ui::drawBackground(appState, config);
+        ui::drawEditor(appState, buffer, config, fonts, typesetter);
 
         SDL_RenderPresent(appState.renderer);
     }
@@ -231,7 +234,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 // TODO: MIGHT WANT TO DISPLAY ERRORS USING A NEW WINDOW SO THE USER STAYS INFORMED
 int main(int argc, char *argv[]) {
     app::AppState appState;
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+    if (SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO) < 0) {
         std::cerr << "SDL Init Error " << SDL_GetError() << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -257,16 +260,16 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    config::EditorConfig state;
-    config::setDefaultConifg(state);
+    config::EditorConfig config;
+    config::setDefaultConifg(config);
     platform::ConfigWatcher watcher;
 
     // TODO: Calculate filepath using system file lookup
     std::string filepath = "config.ini";
-    config::loadConfig(filepath, state);
+    config::loadConfig(filepath, config);
     DEV(core::printState(state));
-    watcher.start(filepath, [&state, filepath]() {
-        config::loadConfig(filepath, state);
+    watcher.start(filepath, [&config, filepath]() {
+        config::loadConfig(filepath, config);
         DEV(core::printState(state));
     });
 
@@ -277,7 +280,7 @@ int main(int argc, char *argv[]) {
     buffer::EditorBuffer buffer(original_content);
 
     SDL_StartTextInput();
-    eventLoop(appState, watcher, state, buffer);
+    eventLoop(appState, watcher, config, buffer);
     SDL_StopTextInput();
 
     SDL_DestroyRenderer(appState.renderer);
