@@ -35,12 +35,11 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         SDL_FreeSurface(lineSurface);
     }
 
-    auto [cursorRow, cursorCol] = buffer.getCursorPosition2D();
-    int estimatedCharWidth = config.font.size / 2;
+    auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
     int lineHeight = config.font.size;
+    int cursorWidth = config.font.size / 2;
 
-    SDL_Rect cursorRect = {10 + (int)(cursorCol * estimatedCharWidth), 10 + (int)(cursorRow * lineHeight), estimatedCharWidth,
-                           lineHeight};
+    SDL_Rect cursorRect = {10 + cursorX, 10 + cursorY, cursorWidth, lineHeight};
     SDL_SetRenderDrawColor(appState.renderer, 255, 255, 255, 100);
     SDL_SetRenderDrawBlendMode(appState.renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(appState.renderer, &cursorRect);
