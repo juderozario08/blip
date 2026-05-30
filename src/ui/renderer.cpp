@@ -15,7 +15,6 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
     }
 
     auto textColor = config.font.color;
-    auto cursorColor = {255, 255, 255, 50};
     auto lines = typesetter.layout(buffer, config);
 
     for (const auto &line : lines) {
@@ -37,10 +36,20 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
 
     auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
     int lineHeight = config.font.size;
-    int cursorWidth = config.font.size / 2;
+    int cursorWidth;
+
+    switch (config.ui.cursor_style) {
+    case config::CursorStyleOpts::CursorBlock:
+        cursorWidth = config.font.size / 2;
+        break;
+    default:
+        cursorWidth = 2;
+        break;
+    }
 
     SDL_Rect cursorRect = {10 + cursorX, 10 + cursorY, cursorWidth, lineHeight};
-    SDL_SetRenderDrawColor(appState.renderer, 255, 255, 255, 100);
+    auto cursorColor = config.theme.cursor;
+    SDL_SetRenderDrawColor(appState.renderer, cursorColor.r, cursorColor.g, cursorColor.b, 100);
     SDL_SetRenderDrawBlendMode(appState.renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(appState.renderer, &cursorRect);
 }

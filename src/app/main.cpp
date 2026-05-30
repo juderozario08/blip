@@ -267,10 +267,10 @@ int main(int argc, char *argv[]) {
     // TODO: Calculate filepath using system file lookup
     std::string filepath = "config.ini";
     config::loadConfig(filepath, config);
-    DEV(core::printState(state));
+    DEV(core::printState(config));
     watcher.start(filepath, [&config, filepath]() {
         config::loadConfig(filepath, config);
-        DEV(core::printState(state));
+        DEV(core::printState(config));
     });
 
     std::string original_content = "";
