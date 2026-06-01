@@ -100,6 +100,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                         }
                         if (event.key.keysym.sym == SDLK_l) {
                             buffer.moveRight();
+                            buffer.clampVimNormal();
                             dirty = true;
                         }
                         if (event.key.keysym.sym == SDLK_k) {
@@ -108,6 +109,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                         }
                         if (event.key.keysym.sym == SDLK_j) {
                             buffer.moveDown();
+                            buffer.clampVimNormal();
                             dirty = true;
                         }
                         if (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER) {
@@ -137,6 +139,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                         }
                         if (event.key.keysym.sym == SDLK_ESCAPE) {
                             vim.mode = VimMode::NORMAL;
+                            buffer.clampVimNormal();
                             dirty = true;
                         }
                         if (event.key.keysym.sym == SDLK_SPACE) {

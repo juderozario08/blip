@@ -36,6 +36,7 @@ class EditorBuffer {
     size_t getCursorPositionFrom2D(size_t row, size_t col) const;
     void setCursorToBeginningColumn();
     void setCursorToEndingColumn();
+    void clampVimNormal();
 
   private:
     PieceTable table;

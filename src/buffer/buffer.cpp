@@ -184,4 +184,21 @@ std::pair<size_t, size_t> EditorBuffer::getCursorPosition2D() const {
     size_t col = cursor_pos - line_starts[row];
     return {row, col};
 }
+
+void EditorBuffer::clampVimNormal() {
+    std::string text = getText();
+    if (text.empty()) {
+        return;
+    }
+
+    if (cursor_pos >= text.length()) {
+        cursor_pos = text.length() - 1;
+    }
+
+    if (text[cursor_pos] == '\n') {
+        if (cursor_pos > 0 && text[cursor_pos - 1] != '\n') {
+            cursor_pos--;
+        }
+    }
+}
 }
