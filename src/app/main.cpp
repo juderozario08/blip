@@ -72,7 +72,8 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
         if (dirty) {
             dirty = false;
-            std::cout << "| Mode: " << (int)vimEngine.getMode() << " | Cursor: " << buffer.getCursor() << "|\n";
+            std::cout << "| Mode: " << (int)vimEngine.getMode() << " | Cursor: " << buffer.getCursor()
+                      << "| Lines: " << buffer.getNumberOfLines() << "|\n";
 
             ui::drawBackground(appState, config);
             ui::drawEditor(appState, buffer, config, fonts, typesetter);

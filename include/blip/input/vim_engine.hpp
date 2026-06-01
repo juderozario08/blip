@@ -5,7 +5,7 @@
 #include <string>
 
 namespace input {
-enum class VimMode { NORMAL, INSERT, VISUAL, REPLACE };
+enum class VimMode { NORMAL, INSERT, VISUAL, REPLACE, COMMAND };
 
 class VimEngine {
   public:

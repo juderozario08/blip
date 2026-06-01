@@ -1,4 +1,5 @@
 #include <blip/input/vim_engine.hpp>
+#include <iostream>
 
 namespace input {
 
@@ -13,7 +14,11 @@ bool VimEngine::handleTextInput(const std::string &text, buffer::EditorBuffer &b
     }
 
     if (mode == VimMode::NORMAL) {
-        if (text == "i") {
+        if (text == ":") {
+            // FIX:
+            mode = VimMode::COMMAND;
+            return true;
+        } else if (text == "i") {
             mode = VimMode::INSERT;
             return true;
         } else if (text == "I") {
@@ -30,6 +35,14 @@ bool VimEngine::handleTextInput(const std::string &text, buffer::EditorBuffer &b
             return true;
         } else if (text == "v") {
             mode = VimMode::VISUAL;
+            return true;
+        } else if (text == "o") {
+            mode = VimMode::INSERT;
+            buffer.insertNewLineNext();
+            return true;
+        } else if (text == "O") {
+            mode = VimMode::INSERT;
+            buffer.insertNewLinePrev();
             return true;
         }
     }
@@ -101,7 +114,8 @@ bool VimEngine::handleInsertMode(const SDL_Event &event, buffer::EditorBuffer &b
         break;
     case SDLK_SPACE:
         buffer.commit();
-        buffer.insertText(" ");
+        std::cout << "Pressed Space" << std::endl;
+        // buffer.insertText(" ");
         dirty = true;
         break;
     case SDLK_RETURN:

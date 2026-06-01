@@ -201,4 +201,18 @@ void EditorBuffer::clampVimNormal() {
         }
     }
 }
+
+void EditorBuffer::insertNewLineNext() {
+    // USE line_starts, cursor_pos
+    setCursorToEndingColumn();
+    insertText("\n");
+}
+
+void EditorBuffer::insertNewLinePrev() {
+    setCursorToBeginningColumn();
+    insertText("\n");
+    setCursor(cursor_pos - 1);
+}
+
+size_t EditorBuffer::getNumberOfLines() { return line_starts.size(); }
 }

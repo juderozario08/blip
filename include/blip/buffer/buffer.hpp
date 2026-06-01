@@ -37,6 +37,9 @@ class EditorBuffer {
     void setCursorToBeginningColumn();
     void setCursorToEndingColumn();
     void clampVimNormal();
+    void insertNewLineNext();
+    void insertNewLinePrev();
+    size_t getNumberOfLines();
 
   private:
     PieceTable table;
