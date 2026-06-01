@@ -5,6 +5,7 @@
 #include <blip/buffer/table.hpp>
 #include <blip/config/editor.hpp>
 #include <blip/core/log.hpp>
+#include <blip/input/vim_engine.hpp>
 #include <blip/platform/system.hpp>
 #include <blip/platform/watcher.hpp>
 #include <blip/text/font_manager.hpp>
@@ -39,7 +40,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
     bool dirty = true;
 
-    auto vim = Vim{VimMode::NORMAL};
+    input::VimEngine vimEngine;
 
     text::Typesetter typesetter;
 
@@ -52,185 +53,36 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             } else if (event.type == SDL_WINDOWEVENT) {
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED) {
                     SDL_GetWindowSize(appState.window, &appState.window_width, &appState.window_height);
+                    dirty = true;
                 }
             } else if (event.type == SDL_TEXTINPUT) {
-                std::string text = event.text.text;
-                if (vim.mode == VimMode::INSERT) {
-                    std::cout << text << std::endl;
-                    buffer.insertText(text);
+                if (vimEngine.handleTextInput(event.text.text, buffer)) {
                     dirty = true;
-                } else if (vim.mode == VimMode::NORMAL) {
-                    if (text == "i") {
-                        vim.mode = VimMode::INSERT;
-                        dirty = true;
-                    } else if (text == "I") {
-                        vim.mode = VimMode::INSERT;
-                        buffer.setCursorToBeginningColumn();
-                        dirty = true;
-                    } else if (text == "a") {
-                        vim.mode = VimMode::INSERT;
-                        buffer.setCursor(buffer.getCursor() + 1);
-                        dirty = true;
-                    } else if (text == "A") {
-                        vim.mode = VimMode::INSERT;
-                        buffer.setCursorToEndingColumn();
-                        dirty = true;
-                    } else if (text == "v") {
-                        vim.mode = VimMode::VISUAL;
-                        dirty = true;
-                    } else if (text == "R") {
-                        vim.mode = VimMode::REPLACE;
-                        dirty = true;
-                    }
                 }
             } else if (event.type == SDL_KEYDOWN) {
                 if (config.input.vim_mode) {
-                    if (vim.mode == VimMode::NORMAL) {
-                        if (event.key.keysym.sym == SDLK_u) {
-                            buffer.undo();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.mod & KMOD_CTRL && event.key.keysym.sym == SDLK_r) {
-                            buffer.redo();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_h) {
-                            buffer.moveLeft();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_l) {
-                            buffer.moveRight();
-                            buffer.clampVimNormal();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_k) {
-                            buffer.moveUp();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_j) {
-                            buffer.moveDown();
-                            buffer.clampVimNormal();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER) {
-                            buffer.moveDown();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_BACKSPACE) {
-                            buffer.moveLeft();
-                            dirty = true;
-                        }
-                    } else if (vim.mode == VimMode::INSERT) {
-                        if (event.key.keysym.sym == SDLK_LEFT) {
-                            buffer.moveLeft();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_RIGHT) {
-                            buffer.moveRight();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_UP) {
-                            buffer.moveUp();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_DOWN) {
-                            buffer.moveDown();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_ESCAPE) {
-                            vim.mode = VimMode::NORMAL;
-                            buffer.clampVimNormal();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_SPACE) {
-                            buffer.commit();
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER) {
-                            buffer.commit();
-                            buffer.insertText("\n");
-                            dirty = true;
-                        }
-                        if (event.key.keysym.sym == SDLK_BACKSPACE && buffer.getCursor() > 0) {
-                            buffer.commit();
-                            buffer.backspace(1);
-                            dirty = true;
-                        }
-                    } else if (vim.mode == VimMode::VISUAL) {
-                        if (event.key.keysym.sym == SDLK_ESCAPE) {
-                            vim.mode = VimMode::NORMAL;
-                            dirty = true;
-                        }
-                    } else if (vim.mode == VimMode::REPLACE) {
-                        if (event.key.keysym.sym == SDLK_ESCAPE) {
-                            vim.mode = VimMode::NORMAL;
-                            dirty = true;
-                        }
+                    if (vimEngine.handleKeyDown(event, buffer)) {
+                        dirty = true;
                     }
                 } else {
-                    if (event.key.keysym.sym == SDLK_LEFT) {
-                        buffer.moveLeft();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.sym == SDLK_RIGHT) {
-                        buffer.moveRight();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.sym == SDLK_UP) {
-                        buffer.moveUp();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.sym == SDLK_DOWN) {
-                        buffer.moveDown();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.mod & (KMOD_CTRL | KMOD_GUI) && event.key.keysym.sym == SDLK_z) {
-                        buffer.undo();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.mod & (KMOD_CTRL | KMOD_GUI) && event.key.keysym.sym == SDLK_r) {
-                        buffer.redo();
-                        dirty = true;
-                    }
-                    if (event.key.keysym.sym == SDLK_SPACE || event.key.keysym.sym == SDLK_RETURN ||
-                        event.key.keysym.sym == SDLK_KP_ENTER) {
-                        buffer.commit();
-                        buffer.insertText("\n");
-                        dirty = true;
-                    }
-                    if (event.key.keysym.sym == SDLK_BACKSPACE && buffer.getCursor() > 0) {
-                        buffer.commit();
-                        buffer.backspace(1);
-                        dirty = true;
-                    }
+                    // FIX: ADD STANDARD KEYBINDS HERE
                 }
             }
         }
 
         if (dirty) {
             dirty = false;
-            std::cout << "| Cursor Pos: " << buffer.getCursor() << " | Text Length: " << buffer.getTotalLength() << " | Mode: "
-                      << (vim.mode == VimMode::NORMAL   ? "Normal"
-                          : vim.mode == VimMode::INSERT ? "Insert"
-                          : vim.mode == VimMode::VISUAL ? "Visual"
-                                                        : "Replace")
-                      << " |\n\n";
-            std::string t = buffer.getText();
-            std::cout << t.substr(0, buffer.getCursor());
-            std::cout << "|";
-            std::cout << t.substr(buffer.getCursor(), t.length() - buffer.getCursor()) << std::endl;
+            std::cout << "| Mode: " << (int)vimEngine.getMode() << " | Cursor: " << buffer.getCursor() << "|\n";
+
+            ui::drawBackground(appState, config);
+            ui::drawEditor(appState, buffer, config, fonts, typesetter);
+            SDL_RenderPresent(appState.renderer);
         }
 
         watcher.check();
-
         if (fonts.updateFontFamily(config.font.family, config.font.size)) {
             dirty = true;
         }
-
-        ui::drawBackground(appState, config);
-        ui::drawEditor(appState, buffer, config, fonts, typesetter);
-
-        SDL_RenderPresent(appState.renderer);
     }
 }
 

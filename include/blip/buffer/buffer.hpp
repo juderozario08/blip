@@ -1,5 +1,5 @@
 #pragma once
-#include <SDL_stdinc.h>
+#include <SDL.h>
 #include <blip/buffer/table.hpp>
 #include <string>
 #include <utility>

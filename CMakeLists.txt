@@ -35,6 +35,7 @@ set(CORE_SOURCES
     src/text/font_manager.cpp
     src/text/highlighter.cpp
     src/text/typesetter.cpp
+    src/input/vim_engine.cpp
     src/ui/renderer.cpp
     src/ui/window.cpp
 )
