@@ -4,38 +4,49 @@
 namespace buffer {
 
 EditorBuffer::EditorBuffer(const std::string &initial_text) : table(initial_text), cursor_pos(0) {
-    updateLineStarts(initial_text);
+    adjustLineStartsOnInsert(0, initial_text);
     commit();
 }
 
-void EditorBuffer::updateLineStarts(const std::string &text) {
+void EditorBuffer::adjustLineStartsOnInsert(size_t index, const std::string &text) {
     if (line_starts.empty()) {
         line_starts.push_back(0);
         for (size_t i = 0; i < text.length(); i++) {
-            if (text[i] == '\n') {
+            if (text[i] == '\n')
                 line_starts.push_back(i + 1);
-            }
         }
-    } else {
-        size_t pushed = 0;
-        auto it = std::upper_bound(line_starts.begin(), line_starts.end(), cursor_pos);
-        size_t push_idx = std::distance(line_starts.begin(), it);
+        return;
+    }
 
-        for (size_t i = 0; i < text.size(); i++) {
-            if (text[i] == '\n') {
-                line_starts.insert(line_starts.begin() + push_idx + pushed, cursor_pos + i + 1);
-                pushed++;
-            }
-        }
-        for (size_t j = push_idx + pushed; j < line_starts.size(); j++) {
-            line_starts[j] += text.length();
+    auto it = std::upper_bound(line_starts.begin(), line_starts.end(), index);
+    size_t insert_idx = std::distance(line_starts.begin(), it);
+
+    for (size_t i = insert_idx; i < line_starts.size(); i++) {
+        line_starts[i] += text.length();
+    }
+
+    size_t pushed = 0;
+    for (size_t i = 0; i < text.length(); i++) {
+        if (text[i] == '\n') {
+            line_starts.insert(line_starts.begin() + insert_idx + pushed, index + i + 1);
+            pushed++;
         }
     }
 }
 
-void EditorBuffer::recomputeAllLines() {
-    line_starts.clear();
-    updateLineStarts(table.getText());
+void EditorBuffer::adjustLineStartsOnErase(size_t index, size_t amount) {
+    if (line_starts.empty()) {
+        return;
+    }
+
+    auto it_start = std::upper_bound(line_starts.begin(), line_starts.end(), index);
+    auto it_end = std::upper_bound(line_starts.begin(), line_starts.end(), index + amount);
+
+    it_start = line_starts.erase(it_start, it_end);
+
+    for (auto it = it_start; it != line_starts.end(); ++it) {
+        *it -= amount;
+    }
 }
 
 void EditorBuffer::commit() {
@@ -101,7 +112,7 @@ void EditorBuffer::insertText(const std::string &text) {
     if (text.empty()) {
         return;
     }
-    updateLineStarts(text);
+    adjustLineStartsOnInsert(cursor_pos, text);
     table.insert(cursor_pos, text);
     setCursor(cursor_pos + text.length());
     auto [_, col] = getCursorPosition2D();
@@ -115,27 +126,35 @@ void EditorBuffer::backspace(size_t amount) {
     if (cursor_pos < amount) {
         amount = cursor_pos;
     }
+
     table.erase(cursor_pos - amount, amount);
+    adjustLineStartsOnErase(cursor_pos - amount, amount);
 
     setCursor(cursor_pos - amount);
-
-    recomputeAllLines();
     auto [_, col] = getCursorPosition2D();
     desired_col = col;
 }
 
 void EditorBuffer::moveLeft() {
-    int current_pos = cursor_pos;
-    setCursor(cursor_pos - 1);
-    if (cursor_pos < current_pos) {
-        desired_col--;
+    if (cursor_pos == 0) {
+        return;
+    }
+    auto [row, col] = getCursorPosition2D();
+    if (col > 0) {
+        cursor_pos--;
+        desired_col = col - 1;
     }
 }
+
 void EditorBuffer::moveRight() {
-    int current_pos = cursor_pos;
-    setCursor(cursor_pos + 1);
-    if (cursor_pos > current_pos) {
-        desired_col++;
+    if (cursor_pos >= table.getTotalLength()) {
+        return;
+    }
+    auto curr_ch = table.getCharacterFromCursor(cursor_pos);
+    if (curr_ch && *curr_ch != '\n') {
+        cursor_pos++;
+        auto [row, col] = getCursorPosition2D();
+        desired_col = col;
     }
 }
 void EditorBuffer::moveUp() {

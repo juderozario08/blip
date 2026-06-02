@@ -1,8 +1,9 @@
 #pragma once
 
 #include <SDL.h>
-#include <blip/buffer/buffer.hpp>
+#include <blip/input/action.hpp>
 #include <string>
+#include <vector>
 
 namespace input {
 
@@ -12,8 +13,8 @@ class VimEngine {
   public:
     VimEngine();
 
-    bool handleKeyDown(const SDL_Event &event, buffer::EditorBuffer &buffer);
-    bool handleTextInput(const std::string &text, buffer::EditorBuffer &buffer);
+    std::vector<Action> handleKeyDown(const SDL_Event &event);
+    std::vector<Action> handleTextInput(const std::string &text);
 
     VimMode getMode() const;
 
@@ -21,10 +22,9 @@ class VimEngine {
     VimMode mode;
     std::string command_buffer;
 
-    bool handleNormalMode(const SDL_Event &event, buffer::EditorBuffer &buffer);
-    bool handleInsertMode(const SDL_Event &event, buffer::EditorBuffer &buffer);
-    bool handleVisualMode(const SDL_Event &event, buffer::EditorBuffer &buffer);
-    bool handleCommandMode(const SDL_Event &event, buffer::EditorBuffer &buffer);
+    std::vector<Action> handleNormalMode(const SDL_Event &event);
+    std::vector<Action> handleInsertMode(const SDL_Event &event);
+    std::vector<Action> handleVisualMode(const SDL_Event &event);
+    std::vector<Action> handleCommandMode(const SDL_Event &event);
 };
-
 }

@@ -1,225 +1,192 @@
 #include <blip/input/vim_engine.hpp>
-#include <iostream>
 
 namespace input {
 
 VimEngine::VimEngine() : mode(VimMode::NORMAL) {}
-
 VimMode VimEngine::getMode() const { return mode; }
 
-bool VimEngine::handleTextInput(const std::string &text, buffer::EditorBuffer &buffer) {
+std::vector<Action> VimEngine::handleTextInput(const std::string &text) {
+    std::vector<Action> actions;
+
     if (mode == VimMode::INSERT) {
-        buffer.insertText(text);
-        return true;
+        actions.push_back({ActionType::InsertText, text});
+        return actions;
     }
 
     if (mode == VimMode::NORMAL) {
         if (text == ":") {
             mode = VimMode::COMMAND;
-            return true;
         } else if (text == "i") {
             mode = VimMode::INSERT;
-            return true;
         } else if (text == "I") {
             mode = VimMode::INSERT;
-            buffer.setCursorToBeginningColumn();
-            return true;
+            actions.push_back({ActionType::MoveStartOfLine});
         } else if (text == "a") {
             mode = VimMode::INSERT;
-            buffer.setCursor(buffer.getCursor() + 1);
-            return true;
+            actions.push_back({ActionType::MoveRight});
         } else if (text == "A") {
             mode = VimMode::INSERT;
-            buffer.setCursorToEndingColumn();
-            return true;
+            actions.push_back({ActionType::MoveEndOfLine});
         } else if (text == "o") {
             mode = VimMode::INSERT;
-            buffer.insertNewLineNext();
-            return true;
+            actions.push_back({ActionType::NewLineNext});
         } else if (text == "O") {
             mode = VimMode::INSERT;
-            buffer.insertNewLinePrev();
-            return true;
+            actions.push_back({ActionType::NewLinePrev});
         } else if (text == "v") {
             mode = VimMode::VISUAL;
-            return true;
         }
     }
-    return false;
+    return actions;
 }
 
-bool VimEngine::handleKeyDown(const SDL_Event &event, buffer::EditorBuffer &buffer) {
+std::vector<Action> VimEngine::handleKeyDown(const SDL_Event &event) {
     switch (mode) {
     case VimMode::NORMAL:
-        return handleNormalMode(event, buffer);
+        return handleNormalMode(event);
     case VimMode::INSERT:
-        return handleInsertMode(event, buffer);
+        return handleInsertMode(event);
     case VimMode::VISUAL:
-        return handleVisualMode(event, buffer);
+        return handleVisualMode(event);
     case VimMode::COMMAND:
-        return handleCommandMode(event, buffer);
+        return handleCommandMode(event);
     default:
-        return false;
+        return {};
     }
 }
 
-bool VimEngine::handleNormalMode(const SDL_Event &event, buffer::EditorBuffer &buffer) {
-    bool dirty = false;
+std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
+    std::vector<Action> actions;
     bool isCtrl = (event.key.keysym.mod & KMOD_CTRL);
     bool isShift = (event.key.keysym.mod & KMOD_SHIFT);
 
+    // 1. CONTROL BINDINGS
     if (isCtrl) {
         if (event.key.keysym.sym == SDLK_d) {
-            for (int i = 0; i < 15; i++)
-                buffer.moveDown();
-            dirty = true;
+            actions.push_back({ActionType::MoveDown, "", 15});
         } else if (event.key.keysym.sym == SDLK_u) {
-            for (int i = 0; i < 15; i++)
-                buffer.moveUp();
-            dirty = true;
+            actions.push_back({ActionType::MoveUp, "", 15});
         } else if (event.key.keysym.sym == SDLK_r) {
-            buffer.redo();
-            dirty = true;
+            actions.push_back({ActionType::Redo});
         }
-        if (dirty)
-            buffer.clampVimNormal();
-        return dirty;
+        if (!actions.empty())
+            actions.push_back({ActionType::ClampNormal});
+        return actions;
     }
 
+    // 2. DOUBLE-STROKE COMMANDS
     if (event.key.keysym.sym == SDLK_g && !isShift) {
         if (command_buffer == "g") {
-            buffer.moveToStartOfFile();
+            actions.push_back({ActionType::MoveStartOfFile});
             command_buffer = "";
-            dirty = true;
         } else {
             command_buffer = "g";
-            return false;
+            return actions;
         }
     } else {
         command_buffer = "";
     }
 
+    // 3. STANDARD BINDINGS
     std::string delimiters = isShift ? " " : " .@+-/:(){}[]&,;";
 
     switch (event.key.keysym.sym) {
     case SDLK_h:
     case SDLK_LEFT:
-        if (isShift)
-            buffer.insertBlankLineAboveStay();
-        else
-            buffer.moveLeft();
-        dirty = true;
+        actions.push_back(isShift ? Action{ActionType::InsertBlankLineAbove} : Action{ActionType::MoveLeft});
         break;
-
     case SDLK_l:
     case SDLK_RIGHT:
-        if (isShift)
-            buffer.insertBlankLineBelowStay();
-        else
-            buffer.moveRight();
-        dirty = true;
+        actions.push_back(isShift ? Action{ActionType::InsertBlankLineBelow} : Action{ActionType::MoveRight});
         break;
-
     case SDLK_j:
     case SDLK_DOWN:
-        buffer.moveDown();
-        dirty = true;
+        actions.push_back({ActionType::MoveDown});
         break;
-
     case SDLK_k:
     case SDLK_UP:
-        buffer.moveUp();
-        dirty = true;
+        actions.push_back({ActionType::MoveUp});
         break;
-
     case SDLK_b:
-        buffer.cursorBack(delimiters);
-        dirty = true;
+        actions.push_back({ActionType::MoveWordBack, delimiters});
         break;
     case SDLK_w:
-        buffer.cursorForward(delimiters);
-        dirty = true;
+        actions.push_back({ActionType::MoveWordForward, delimiters});
         break;
-
     case SDLK_u:
-        buffer.undo();
-        dirty = true;
+        actions.push_back({ActionType::Undo});
         break;
     case SDLK_x:
-        buffer.deleteChar();
-        dirty = true;
+        actions.push_back({ActionType::DeleteChar});
         break;
-
     case SDLK_0:
-        buffer.moveToStartOfLine();
-        dirty = true;
+        actions.push_back({ActionType::MoveStartOfLine});
         break;
     case SDLK_4:
-        if (isShift) {
-            buffer.moveToEndOfLine();
-            dirty = true;
-        }
+        if (isShift)
+            actions.push_back({ActionType::MoveEndOfLine});
         break;
     case SDLK_g:
-        if (isShift) {
-            buffer.moveToEndOfFile();
-            dirty = true;
-        }
+        if (isShift)
+            actions.push_back({ActionType::MoveEndOfFile});
         break;
     }
 
-    if (dirty)
-        buffer.clampVimNormal();
-    return dirty;
+    if (!actions.empty())
+        actions.push_back({ActionType::ClampNormal});
+    return actions;
 }
 
-bool VimEngine::handleInsertMode(const SDL_Event &event, buffer::EditorBuffer &buffer) {
-    bool dirty = false;
-    if (event.key.keysym.sym == SDLK_w) {
-        std::cout << "Window prefix <C-w> triggered!\n";
-    }
+std::vector<Action> VimEngine::handleInsertMode(const SDL_Event &event) {
+    std::vector<Action> actions;
     switch (event.key.keysym.sym) {
     case SDLK_ESCAPE:
         mode = VimMode::NORMAL;
-        buffer.clampVimNormal();
-        dirty = true;
+        actions.push_back({ActionType::ClampNormal});
         break;
     case SDLK_SPACE:
-        buffer.commit();
+        actions.push_back({ActionType::CommitUndo});
         break;
     case SDLK_RETURN:
     case SDLK_KP_ENTER:
-        buffer.commit();
-        buffer.insertText("\n");
-        dirty = true;
+        actions.push_back({ActionType::CommitUndo});
+        actions.push_back({ActionType::InsertText, "\n"});
         break;
     case SDLK_BACKSPACE:
-        if (buffer.getCursor() > 0) {
-            buffer.commit();
-            buffer.backspace(1);
-            dirty = true;
-        }
+        actions.push_back({ActionType::CommitUndo});
+        actions.push_back({ActionType::Backspace});
+        break;
+    case SDLK_LEFT:
+        actions.push_back(Action{ActionType::MoveLeft});
+        break;
+    case SDLK_RIGHT:
+        actions.push_back(Action{ActionType::MoveRight});
+        break;
+    case SDLK_DOWN:
+        actions.push_back({ActionType::MoveDown});
+        break;
+    case SDLK_UP:
+        actions.push_back({ActionType::MoveUp});
         break;
     }
-    return dirty;
+    return actions;
 }
 
-bool VimEngine::handleVisualMode(const SDL_Event &event, buffer::EditorBuffer &buffer) {
+std::vector<Action> VimEngine::handleVisualMode(const SDL_Event &event) {
+    std::vector<Action> actions;
     if (event.key.keysym.sym == SDLK_ESCAPE) {
         mode = VimMode::NORMAL;
-        buffer.clampVimNormal();
-        return true;
+        actions.push_back({ActionType::ClampNormal});
     }
-    return false;
+    return actions;
 }
 
-bool VimEngine::handleCommandMode(const SDL_Event &event, buffer::EditorBuffer &buffer) {
+std::vector<Action> VimEngine::handleCommandMode(const SDL_Event &event) {
+    std::vector<Action> actions;
     if (event.key.keysym.sym == SDLK_ESCAPE) {
         mode = VimMode::NORMAL;
-        buffer.clampVimNormal();
-        return true;
+        actions.push_back({ActionType::ClampNormal});
     }
-    return false;
+    return actions;
 }
-
 }

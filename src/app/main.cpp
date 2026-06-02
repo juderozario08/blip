@@ -5,6 +5,7 @@
 #include <blip/buffer/table.hpp>
 #include <blip/config/editor.hpp>
 #include <blip/core/log.hpp>
+#include <blip/input/action.hpp>
 #include <blip/input/vim_engine.hpp>
 #include <blip/platform/system.hpp>
 #include <blip/platform/watcher.hpp>
@@ -21,6 +22,80 @@
 #define DEV(...)
 #endif
 
+void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer) {
+    for (const auto &action : actions) {
+        for (int i = 0; i < action.count; i++) {
+            switch (action.type) {
+            case input::ActionType::MoveLeft:
+                buffer.moveLeft();
+                break;
+            case input::ActionType::MoveRight:
+                buffer.moveRight();
+                break;
+            case input::ActionType::MoveUp:
+                buffer.moveUp();
+                break;
+            case input::ActionType::MoveDown:
+                buffer.moveDown();
+                break;
+            case input::ActionType::MoveWordForward:
+                buffer.cursorForward(action.payload);
+                break;
+            case input::ActionType::MoveWordBack:
+                buffer.cursorBack(action.payload);
+                break;
+            case input::ActionType::MoveStartOfLine:
+                buffer.moveToStartOfLine();
+                break;
+            case input::ActionType::MoveEndOfLine:
+                buffer.moveToEndOfLine();
+                break;
+            case input::ActionType::MoveStartOfFile:
+                buffer.moveToStartOfFile();
+                break;
+            case input::ActionType::MoveEndOfFile:
+                buffer.moveToEndOfFile();
+                break;
+            case input::ActionType::InsertText:
+                buffer.insertText(action.payload);
+                break;
+            case input::ActionType::DeleteChar:
+                buffer.deleteChar();
+                break;
+            case input::ActionType::Backspace:
+                buffer.backspace(1);
+                break;
+            case input::ActionType::NewLineNext:
+                buffer.insertNewLineNext();
+                break;
+            case input::ActionType::NewLinePrev:
+                buffer.insertNewLinePrev();
+                break;
+            case input::ActionType::Undo:
+                buffer.undo();
+                break;
+            case input::ActionType::Redo:
+                buffer.redo();
+                break;
+            case input::ActionType::CommitUndo:
+                buffer.commit();
+                break;
+            case input::ActionType::InsertBlankLineAbove:
+                buffer.insertBlankLineAboveStay();
+                break;
+            case input::ActionType::InsertBlankLineBelow:
+                buffer.insertBlankLineBelowStay();
+                break;
+            case input::ActionType::ClampNormal:
+                buffer.clampVimNormal();
+                break;
+            case input::ActionType::None:
+                break;
+            }
+        }
+    }
+}
+
 void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
                buffer::EditorBuffer &buffer) {
     auto running = true;
@@ -30,14 +105,12 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     fonts.updateFontFamily(config.font.family, config.font.size);
 
     bool dirty = true;
-
     input::VimEngine vimEngine;
     text::Typesetter typesetter;
 
     while (running) {
         SDL_WaitEventTimeout(NULL, 250);
         while (SDL_PollEvent(&event) != 0) {
-
             if (event.type == SDL_QUIT) {
                 running = false;
             } else if (event.type == SDL_WINDOWEVENT) {
@@ -46,16 +119,20 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                     dirty = true;
                 }
             } else if (event.type == SDL_TEXTINPUT) {
-                if (vimEngine.handleTextInput(event.text.text, buffer)) {
+                auto actions = vimEngine.handleTextInput(event.text.text);
+                if (!actions.empty()) {
+                    dispatchActions(actions, buffer);
                     dirty = true;
                 }
             } else if (event.type == SDL_KEYDOWN) {
                 if (config.input.vim_mode) {
-                    if (vimEngine.handleKeyDown(event, buffer)) {
+                    auto actions = vimEngine.handleKeyDown(event);
+                    if (!actions.empty()) {
+                        dispatchActions(actions, buffer);
                         dirty = true;
                     }
                 } else {
-                    // TODO: ADD STANDARD (NON-VIM) KEYBINDS HERE LATER
+                    // TODO: ADD STANDARD KEYBINDS HERE
                 }
             }
         }

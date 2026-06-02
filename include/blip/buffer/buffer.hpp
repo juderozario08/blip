@@ -58,8 +58,9 @@ class EditorBuffer {
     size_t cursor_pos;
     std::vector<size_t> line_starts;
     size_t desired_col = 0;
-    void recomputeAllLines();
-    void updateLineStarts(const std::string &text);
+
+    void adjustLineStartsOnInsert(size_t index, const std::string &text);
+    void adjustLineStartsOnErase(size_t index, size_t amount);
 
     std::vector<EditRecord> undo_stack;
     std::vector<EditRecord> redo_stack;
