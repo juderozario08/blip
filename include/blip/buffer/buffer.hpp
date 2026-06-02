@@ -41,6 +41,18 @@ class EditorBuffer {
     void insertNewLinePrev();
     size_t getNumberOfLines();
 
+    void cursorForward(const std::string &delimiter);
+    void cursorBack(const std::string &delimiter);
+
+    void insertBlankLineAboveStay();
+    void insertBlankLineBelowStay();
+
+    void deleteChar();
+    void moveToStartOfLine();
+    void moveToEndOfLine();
+    void moveToStartOfFile();
+    void moveToEndOfFile();
+
   private:
     PieceTable table;
     size_t cursor_pos;

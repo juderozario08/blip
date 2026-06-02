@@ -115,8 +115,10 @@ void EditorBuffer::backspace(size_t amount) {
     if (cursor_pos < amount) {
         amount = cursor_pos;
     }
-    table.erase(cursor_pos, amount);
+    table.erase(cursor_pos - amount, amount);
+
     setCursor(cursor_pos - amount);
+
     recomputeAllLines();
     auto [_, col] = getCursorPosition2D();
     desired_col = col;
@@ -187,31 +189,173 @@ std::pair<size_t, size_t> EditorBuffer::getCursorPosition2D() const {
 
 void EditorBuffer::clampVimNormal() {
     std::string text = getText();
-    if (text.empty()) {
+    if (text.empty())
         return;
-    }
 
-    if (cursor_pos >= text.length()) {
-        cursor_pos = text.length() - 1;
-    }
+    bool has_trailing_newline = (text.back() == '\n');
+    size_t max_cursor = has_trailing_newline ? text.length() : text.length() - 1;
+
+    if (cursor_pos > max_cursor)
+        cursor_pos = max_cursor;
+    if (cursor_pos == text.length())
+        return;
 
     if (text[cursor_pos] == '\n') {
-        if (cursor_pos > 0 && text[cursor_pos - 1] != '\n') {
+        bool is_blank_line = (cursor_pos == 0) || (text[cursor_pos - 1] == '\n');
+        if (!is_blank_line) {
             cursor_pos--;
         }
     }
 }
 
 void EditorBuffer::insertNewLineNext() {
-    // USE line_starts, cursor_pos
-    setCursorToEndingColumn();
+    size_t len = table.getTotalLength();
+    while (cursor_pos < len) {
+        auto ch = table.getCharacterFromCursor(cursor_pos);
+        if (ch && *ch == '\n')
+            break;
+        cursor_pos++;
+    }
+    if (cursor_pos < len)
+        cursor_pos++;
+    setCursor(cursor_pos);
+    size_t new_line_pos = cursor_pos;
     insertText("\n");
+    if (new_line_pos < len)
+        setCursor(new_line_pos);
 }
 
 void EditorBuffer::insertNewLinePrev() {
-    setCursorToBeginningColumn();
+    while (cursor_pos > 0) {
+        auto ch = table.getCharacterFromCursor(cursor_pos - 1);
+        if (ch && *ch == '\n')
+            break;
+        cursor_pos--;
+    }
+    setCursor(cursor_pos);
+    size_t new_line_pos = cursor_pos;
     insertText("\n");
-    setCursor(cursor_pos - 1);
+    setCursor(new_line_pos);
+}
+
+void EditorBuffer::cursorForward(const std::string &delimiter) {
+    size_t len = table.getTotalLength();
+    if (len == 0 || cursor_pos >= len - 1)
+        return;
+
+    auto getChar = [&](size_t pos) -> char {
+        auto ch = table.getCharacterFromCursor(pos);
+        return ch ? *ch : '\0';
+    };
+    auto getClass = [&](char c) -> int {
+        if (c == '\0')
+            return -1;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+            return 0;
+        if (delimiter.find(c) != std::string::npos)
+            return 1;
+        return 2;
+    };
+
+    int start_class = getClass(getChar(cursor_pos));
+
+    while (cursor_pos < len) {
+        int current_class = getClass(getChar(cursor_pos));
+        if (current_class == 0 || current_class != start_class)
+            break;
+        cursor_pos++;
+    }
+    while (cursor_pos < len) {
+        if (getClass(getChar(cursor_pos)) != 0)
+            break;
+        cursor_pos++;
+    }
+    if (cursor_pos >= len)
+        cursor_pos = len - 1;
+    setCursor(cursor_pos);
+}
+
+void EditorBuffer::cursorBack(const std::string &delimiter) {
+    if (cursor_pos == 0)
+        return;
+
+    auto getChar = [&](size_t pos) -> char {
+        auto ch = table.getCharacterFromCursor(pos);
+        return ch ? *ch : '\0';
+    };
+    auto getClass = [&](char c) -> int {
+        if (c == '\0')
+            return -1;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+            return 0;
+        if (delimiter.find(c) != std::string::npos)
+            return 1;
+        return 2;
+    };
+
+    cursor_pos--;
+    while (cursor_pos > 0 && getClass(getChar(cursor_pos)) == 0)
+        cursor_pos--;
+
+    int target_class = getClass(getChar(cursor_pos));
+    while (cursor_pos > 0) {
+        char left_char = getChar(cursor_pos - 1);
+        if (getClass(left_char) != target_class || getClass(left_char) == 0)
+            break;
+        cursor_pos--;
+    }
+    setCursor(cursor_pos);
+}
+
+void EditorBuffer::moveToStartOfLine() {
+    while (cursor_pos > 0) {
+        auto ch = table.getCharacterFromCursor(cursor_pos - 1);
+        if (ch && *ch == '\n')
+            break;
+        cursor_pos--;
+    }
+    setCursor(cursor_pos);
+}
+
+void EditorBuffer::moveToEndOfLine() {
+    size_t len = table.getTotalLength();
+    while (cursor_pos < len) {
+        auto ch = table.getCharacterFromCursor(cursor_pos);
+        if (ch && *ch == '\n')
+            break;
+        cursor_pos++;
+    }
+    setCursor(cursor_pos);
+}
+
+void EditorBuffer::moveToStartOfFile() { setCursor(0); }
+void EditorBuffer::moveToEndOfFile() { setCursor(table.getTotalLength()); }
+
+void EditorBuffer::deleteChar() {
+    size_t len = table.getTotalLength();
+    if (cursor_pos >= len)
+        return;
+    auto ch = table.getCharacterFromCursor(cursor_pos);
+    if (ch && *ch == '\n')
+        return;
+    setCursor(cursor_pos + 1);
+    backspace(1);
+}
+
+void EditorBuffer::insertBlankLineAboveStay() {
+    size_t original_cursor = cursor_pos;
+    moveToStartOfLine();
+    insertText("\n");
+    setCursor(original_cursor + 1);
+}
+
+void EditorBuffer::insertBlankLineBelowStay() {
+    size_t original_cursor = cursor_pos;
+    moveToEndOfLine();
+    if (cursor_pos < table.getTotalLength())
+        cursor_pos++;
+    insertText("\n");
+    setCursor(original_cursor);
 }
 
 size_t EditorBuffer::getNumberOfLines() { return line_starts.size(); }

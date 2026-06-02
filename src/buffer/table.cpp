@@ -52,48 +52,47 @@ void PieceTable::insert(size_t index, const std::string &text) {
 }
 
 void PieceTable::erase(size_t index, size_t length) {
-    if (length < 1)
+    if (length == 0 || index >= total_length)
         return;
-
-    if (length > index) {
-        length = index;
+    if (index + length > total_length) {
+        length = total_length - index;
     }
 
-    if (index > total_length)
-        index = total_length;
+    while (length > 0) {
+        size_t curr_length = 0;
+        int p_idx = -1;
 
-    size_t curr_length = 0;
-    int i = 0;
-
-    for (; i < pieces.size(); i++) {
-        if (curr_length + pieces[i].length >= index)
-            break;
-        curr_length += pieces[i].length;
-    }
-
-    while (i >= 0 && length > 0) {
-        size_t chars_available = index - curr_length;
-        size_t delete_amount = std::min(length, chars_available);
-        if (delete_amount == pieces[i].length) {
-            pieces.erase(pieces.begin() + i);
-        } else if (chars_available == pieces[i].length) {
-            pieces[i].length -= delete_amount;
-        } else if (chars_available == delete_amount) {
-            pieces[i].start += delete_amount;
-            pieces[i].length -= delete_amount;
-        } else {
-            Piece right_part = {pieces[i].source, pieces[i].start + chars_available, pieces[i].length - chars_available};
-            pieces[i].length = chars_available - delete_amount;
-            pieces.insert(pieces.begin() + i + 1, right_part);
+        for (size_t i = 0; i < pieces.size(); i++) {
+            if (curr_length + pieces[i].length > index) {
+                p_idx = i;
+                break;
+            }
+            curr_length += pieces[i].length;
         }
+
+        if (p_idx == -1)
+            break;
+
+        size_t offset_in_piece = index - curr_length;
+        size_t chars_in_piece = pieces[p_idx].length - offset_in_piece;
+        size_t delete_amount = std::min(length, chars_in_piece);
+
+        if (delete_amount == pieces[p_idx].length) {
+            pieces.erase(pieces.begin() + p_idx);
+        } else if (offset_in_piece == 0) {
+            pieces[p_idx].start += delete_amount;
+            pieces[p_idx].length -= delete_amount;
+        } else if (offset_in_piece + delete_amount == pieces[p_idx].length) {
+            pieces[p_idx].length -= delete_amount;
+        } else {
+            Piece right_part = {pieces[p_idx].source, pieces[p_idx].start + offset_in_piece + delete_amount,
+                                pieces[p_idx].length - offset_in_piece - delete_amount};
+            pieces[p_idx].length = offset_in_piece;
+            pieces.insert(pieces.begin() + p_idx + 1, right_part);
+        }
+
         total_length -= delete_amount;
         length -= delete_amount;
-        index -= delete_amount;
-        if (length == 0)
-            break;
-        if (--i >= 0) {
-            curr_length -= pieces[i].length;
-        }
     }
 }
 

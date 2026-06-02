@@ -1,8 +1,0 @@
-DOUBLE CHECK before completing project
-
-src/config/editor.cpp:        // TODO: MAKE SURE TO CHECK IF THE "VALUE = FONT" FIRST EXISTS OR NOT
-src/config/editor.cpp:// TODO: ADD THE COLOR ADDING COMPONENTS AS WE GO ALONG THE DESIGN
-src/app/main.cpp:// TODO: FIGURE THIS OUT LATER
-src/app/main.cpp:    // TODO: Calculate filepath using system file lookup
-src/config/editor.cpp:// NOTE: Height will be determined based on the line that has the git log but on top of the line_number rectangle
-src/config/editor.cpp:// NOTE: Height will be based on line number with diagnostic stuff based on the LSP

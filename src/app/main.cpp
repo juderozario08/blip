@@ -21,15 +21,6 @@
 #define DEV(...)
 #endif
 
-enum class VimMode { NORMAL, INSERT, VISUAL, REPLACE };
-
-typedef struct {
-    VimMode mode;
-    std::string macro_buffer;
-    std::string command_buffer;
-    std::string keystroke_buffer;
-} Vim;
-
 void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
                buffer::EditorBuffer &buffer) {
     auto running = true;
@@ -41,15 +32,14 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     bool dirty = true;
 
     input::VimEngine vimEngine;
-
     text::Typesetter typesetter;
 
     while (running) {
         SDL_WaitEventTimeout(NULL, 250);
         while (SDL_PollEvent(&event) != 0) {
+
             if (event.type == SDL_QUIT) {
                 running = false;
-            } else if (event.type == SDL_QUIT) {
             } else if (event.type == SDL_WINDOWEVENT) {
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || event.window.event == SDL_WINDOWEVENT_RESIZED) {
                     SDL_GetWindowSize(appState.window, &appState.window_width, &appState.window_height);
@@ -65,15 +55,34 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                         dirty = true;
                     }
                 } else {
-                    // FIX: ADD STANDARD KEYBINDS HERE
+                    // TODO: ADD STANDARD (NON-VIM) KEYBINDS HERE LATER
                 }
             }
         }
 
         if (dirty) {
             dirty = false;
-            std::cout << "| Mode: " << (int)vimEngine.getMode() << " | Cursor: " << buffer.getCursor()
-                      << "| Lines: " << buffer.getNumberOfLines() << "|\n";
+
+            // Helpful debugging output for the console
+            std::cout << "| Mode: ";
+            switch (vimEngine.getMode()) {
+            case input::VimMode::NORMAL:
+                std::cout << "NORMAL ";
+                break;
+            case input::VimMode::INSERT:
+                std::cout << "INSERT ";
+                break;
+            case input::VimMode::VISUAL:
+                std::cout << "VISUAL ";
+                break;
+            case input::VimMode::COMMAND:
+                std::cout << "COMMAND";
+                break;
+            case input::VimMode::REPLACE:
+                std::cout << "REPLACE";
+                break;
+            }
+            std::cout << " | Cursor: " << buffer.getCursor() << " | Lines: " << buffer.getNumberOfLines() << " |\n";
 
             ui::drawBackground(appState, config);
             ui::drawEditor(appState, buffer, config, fonts, typesetter);
@@ -81,6 +90,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
         }
 
         watcher.check();
+
         if (fonts.updateFontFamily(config.font.family, config.font.size)) {
             dirty = true;
         }
@@ -107,7 +117,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    SDL_RaiseWindow(appState.window); // Focus Window
+    SDL_RaiseWindow(appState.window);
 
     SDL_GetWindowSize(appState.window, &appState.window_width, &appState.window_height);
     appState.renderer = SDL_CreateRenderer(appState.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);

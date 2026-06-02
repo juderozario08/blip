@@ -18,18 +18,40 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
     auto lines = typesetter.layout(buffer, config);
     auto lineCount = 1;
 
+    auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
+    int lineHeight = config.font.size + 2;
+
+    if (cursorY + lineHeight > appState.scroll_y + appState.window_height - 20) {
+        appState.scroll_y = cursorY + lineHeight - appState.window_height + 20;
+    } else if (cursorY < appState.scroll_y) {
+        appState.scroll_y = cursorY;
+    }
+
     for (const auto &line : lines) {
+        int draw_y = 10 + line.y_pixel_offset - appState.scroll_y;
+
+        if (draw_y + lineHeight < 0) {
+            lineCount++;
+            continue;
+        }
+        if (draw_y > appState.window_height) {
+            break;
+        }
+
         SDL_Surface *lineNumSurface = TTF_RenderUTF8_Blended(font, std::to_string(lineCount).c_str(), textColor);
         if (lineNumSurface) {
             auto *lineNumTexture = SDL_CreateTextureFromSurface(appState.renderer, lineNumSurface);
             if (lineNumTexture) {
-                SDL_Rect lineNumRect = {5, 10 + line.y_pixel_offset, lineNumSurface->w, lineNumSurface->h};
+                SDL_Rect lineNumRect = {5, draw_y, lineNumSurface->w, lineNumSurface->h};
                 SDL_RenderCopy(appState.renderer, lineNumTexture, nullptr, &lineNumRect);
             }
             SDL_DestroyTexture(lineNumTexture);
         }
+
         lineCount++;
+
         if (line.text.empty()) {
+            SDL_FreeSurface(lineNumSurface);
             continue;
         }
 
@@ -37,7 +59,7 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         if (lineSurface && lineNumSurface) {
             auto *lineTexture = SDL_CreateTextureFromSurface(appState.renderer, lineSurface);
             if (lineTexture) {
-                SDL_Rect lineRect = {30, 10 + line.y_pixel_offset, lineSurface->w, lineSurface->h};
+                SDL_Rect lineRect = {30, draw_y, lineSurface->w, lineSurface->h};
                 SDL_RenderCopy(appState.renderer, lineTexture, nullptr, &lineRect);
             }
             SDL_DestroyTexture(lineTexture);
@@ -46,8 +68,6 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         SDL_FreeSurface(lineNumSurface);
     }
 
-    auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
-    int lineHeight = config.font.size + 2;
     int cursorWidth;
     int halfWidth;
 
@@ -61,8 +81,9 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         break;
     }
 
-    SDL_Rect cursorRect = {30 + cursorX - 1, 10 + cursorY - 1, cursorWidth, lineHeight};
+    SDL_Rect cursorRect = {30 + cursorX - 1, 10 + cursorY - appState.scroll_y - 1, cursorWidth, lineHeight};
     auto cursorColor = config.theme.cursor;
+
     SDL_SetRenderDrawColor(appState.renderer, cursorColor.r, cursorColor.g, cursorColor.b, 100);
     SDL_SetRenderDrawBlendMode(appState.renderer, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(appState.renderer, &cursorRect);
