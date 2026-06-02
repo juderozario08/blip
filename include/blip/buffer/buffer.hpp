@@ -1,6 +1,7 @@
 #pragma once
 #include <SDL.h>
 #include <blip/buffer/table.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -55,11 +56,19 @@ class EditorBuffer {
     void moveToEndOfFile();
     void saveToFile(const std::string &filename);
 
+    void setVisualAnchor();
+    void clearVisualAnchor();
+    bool hasSelection() const;
+
+    std::pair<size_t, size_t> getSelectionRange() const;
+    std::string getSelectedText() const;
+
   private:
     PieceTable table;
     size_t cursor_pos;
     std::vector<size_t> line_starts;
     size_t desired_col = 0;
+    std::optional<size_t> visual_anchor = std::nullopt;
 
     void adjustLineStartsOnInsert(size_t index, const std::string &text);
     void adjustLineStartsOnErase(size_t index, size_t amount);

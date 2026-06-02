@@ -41,49 +41,69 @@ static void drawCursor(app::AppState &appState, config::EditorConfig &config, in
     SDL_RenderFillRect(appState.renderer, &cursorRect);
 }
 
-static void drawLine(app::AppState &appState, TTF_Font *font, const text::VisualLine &line, int lineCount, int draw_y,
-                     const SDL_Color &textColor, const SDL_Rect &viewport, config::EditorConfig &config) {
-    SDL_Surface *lineNumSurface = TTF_RenderUTF8_Blended(font, std::to_string(lineCount).c_str(), textColor);
-    if (!lineNumSurface) {
-        return;
+static void drawLine(app::AppState &appState, const text::VisualLine &line, int lineCount, int draw_y, const SDL_Rect &viewport,
+                     config::EditorConfig &config, int lineHeight, bool hasSelection, size_t selStart, size_t selEnd,
+                     size_t lineStartIdx, const GlyphCache &glyphCache) {
+
+    std::string lineNumStr = std::to_string(lineCount);
+    int current_x = viewport.x + config.layout.line_number_offset_x;
+    for (char c : lineNumStr) {
+        const auto &glyph = glyphCache.getGlyph(c);
+        if (glyph.texture) {
+            SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
+            SDL_RenderCopy(appState.renderer, glyph.texture, nullptr, &dest);
+            current_x += glyph.width;
+        }
     }
 
-    SDL_Texture *lineNumTexture = SDL_CreateTextureFromSurface(appState.renderer, lineNumSurface);
-    if (lineNumTexture) {
-        // Offset X by viewport.x
-        SDL_Rect lineNumRect = {viewport.x + config.layout.line_number_offset_x, draw_y, lineNumSurface->w, lineNumSurface->h};
-        SDL_RenderCopy(appState.renderer, lineNumTexture, nullptr, &lineNumRect);
-        SDL_DestroyTexture(lineNumTexture);
-    }
-    SDL_FreeSurface(lineNumSurface);
+    size_t lineEndIdx = lineStartIdx + line.text.length();
+    if (hasSelection && selStart <= lineEndIdx && selEnd >= lineStartIdx && selStart != selEnd) {
+        size_t hlStart = std::max(lineStartIdx, selStart);
+        size_t hlEnd = std::min(lineEndIdx, selEnd);
 
-    if (line.text.empty())
-        return;
+        std::string textBefore = line.text.substr(0, hlStart - lineStartIdx);
+        std::string textHighlight = line.text.substr(hlStart - lineStartIdx, hlEnd - hlStart);
 
-    SDL_Surface *lineSurface = TTF_RenderUTF8_Blended(font, line.text.c_str(), textColor);
-    if (!lineSurface) {
-        return;
+        // Instantly measure widths using our O(1) cache instead of TTF_SizeUTF8
+        int xOffset = glyphCache.measureString(textBefore, config.preference.tab_width);
+        int hlWidth = glyphCache.measureString(textHighlight, config.preference.tab_width);
+
+        if (selEnd > lineEndIdx) {
+            hlWidth += glyphCache.getGlyph(' ').width; // Highlight the invisible \n
+        }
+
+        SDL_Rect hlRect = {viewport.x + config.layout.text_offset_x + xOffset, draw_y, hlWidth, lineHeight};
+        auto selColor = config.theme.selection;
+        SDL_SetRenderDrawColor(appState.renderer, selColor.r, selColor.g, selColor.b, 150);
+        SDL_RenderFillRect(appState.renderer, &hlRect);
     }
 
-    SDL_Texture *lineTexture = SDL_CreateTextureFromSurface(appState.renderer, lineSurface);
-    if (lineTexture) {
-        // Offset X by viewport.x
-        SDL_Rect lineRect = {viewport.x + config.layout.text_offset_x, draw_y, lineSurface->w, lineSurface->h};
-        SDL_RenderCopy(appState.renderer, lineTexture, nullptr, &lineRect);
-        SDL_DestroyTexture(lineTexture);
+    // 3. Draw the actual Text Characters using the cache!
+    current_x = viewport.x + config.layout.text_offset_x;
+    for (char c : line.text) {
+        if (c == '\t') {
+            current_x += glyphCache.getGlyph(' ').width * config.preference.tab_width;
+            continue;
+        }
+
+        const auto &glyph = glyphCache.getGlyph(c);
+        if (glyph.texture) {
+            SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
+            SDL_RenderCopy(appState.renderer, glyph.texture, nullptr, &dest);
+            current_x += glyph.width;
+        }
     }
-    SDL_FreeSurface(lineSurface);
 }
 
 void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
-                text::Typesetter &typesetter, SDL_Rect viewport) {
+                text::Typesetter &typesetter, SDL_Rect viewport, const ui::GlyphCache &glyphCache) {
+
     TTF_Font *font = fonts.getFont();
     if (!font) {
         return;
     }
 
     size_t totalLines = buffer.getNumberOfLines();
-
     std::string gutterString = std::to_string(totalLines) + "  ";
 
     int gutterPixelWidth = 0;
@@ -93,31 +113,39 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
 
     SDL_RenderSetClipRect(appState.renderer, &viewport);
 
-    auto textColor = config.font.color;
     auto lines = typesetter.layout(buffer, config);
     auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
     int lineHeight = config.font.size + 2;
 
     updateCamera(appState, cursorY, lineHeight, viewport, config);
 
+    bool hasSelection = buffer.hasSelection();
+    auto [selStart, selEnd] = buffer.getSelectionRange();
+
     int lineCount = 1;
+    size_t currentCharIdx = 0;
+
     for (const auto &line : lines) {
+        size_t currentLineLength = line.text.length() + 1;
         int draw_y = viewport.y + line.y_pixel_offset - appState.scroll_y;
 
         if (draw_y + lineHeight < viewport.y) {
             lineCount++;
+            currentCharIdx += currentLineLength;
             continue;
         }
         if (draw_y > viewport.y + viewport.h) {
             break;
         }
 
-        drawLine(appState, font, line, lineCount, draw_y, textColor, viewport, config);
+        drawLine(appState, line, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd, currentCharIdx,
+                 glyphCache);
+
         lineCount++;
+        currentCharIdx += currentLineLength;
     }
 
     drawCursor(appState, config, cursorX, cursorY, lineHeight, viewport);
-
     SDL_RenderSetClipRect(appState.renderer, NULL);
 }
 

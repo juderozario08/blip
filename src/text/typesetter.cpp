@@ -20,10 +20,11 @@ std::vector<VisualLine> Typesetter::layout(buffer::EditorBuffer &buffer, config:
         currentLineIndex++;
     }
 
-    if (rawText.empty() || rawText.back() == '\n') {
+    if (rawText.empty()) {
         int yPos = currentLineIndex * lineHeight;
         lines.push_back({"", yPos});
     }
+
     return lines;
 }
 

@@ -41,6 +41,7 @@ std::vector<Action> VimEngine::handleTextInput(const std::string &text) {
             actions.push_back({ActionType::NewLinePrev});
         } else if (text == "v") {
             mode = VimMode::VISUAL;
+            actions.push_back({ActionType::StartVisual});
         }
     }
     return actions;
@@ -129,12 +130,17 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         actions.push_back({ActionType::MoveStartOfLine});
         break;
     case SDLK_4:
-        if (isShift)
+        if (isShift) {
             actions.push_back({ActionType::MoveEndOfLine});
+        }
         break;
     case SDLK_g:
-        if (isShift)
+        if (isShift) {
             actions.push_back({ActionType::MoveEndOfFile});
+        }
+        break;
+    case SDLK_p:
+        actions.push_back({ActionType::Paste});
         break;
     }
 
@@ -180,10 +186,73 @@ std::vector<Action> VimEngine::handleInsertMode(const SDL_Event &event) {
 
 std::vector<Action> VimEngine::handleVisualMode(const SDL_Event &event) {
     std::vector<Action> actions;
+    bool isShift = (event.key.keysym.mod & KMOD_SHIFT);
+    std::string delimiters = isShift ? " " : " .@+-/:(){}[]&,;";
+
+    // 1. Handle Escaping
     if (event.key.keysym.sym == SDLK_ESCAPE) {
         mode = VimMode::NORMAL;
+        actions.push_back({ActionType::ClearVisual});
         actions.push_back({ActionType::ClampNormal});
+        return actions;
     }
+
+    // 2. Handle double-stroke commands (like 'gg')
+    if (event.key.keysym.sym == SDLK_g && !isShift) {
+        if (command_buffer == "g") {
+            actions.push_back({ActionType::MoveStartOfFile});
+            command_buffer = "";
+        } else {
+            command_buffer = "g";
+            return actions;
+        }
+    } else {
+        command_buffer = ""; // Reset if they press anything else
+    }
+
+    // 3. Handle Movement
+    switch (event.key.keysym.sym) {
+    case SDLK_h:
+    case SDLK_LEFT:
+        actions.push_back({ActionType::MoveLeft});
+        break;
+    case SDLK_l:
+    case SDLK_RIGHT:
+        actions.push_back({ActionType::MoveRight});
+        break;
+    case SDLK_j:
+    case SDLK_DOWN:
+        actions.push_back({ActionType::MoveDown});
+        break;
+    case SDLK_k:
+    case SDLK_UP:
+        actions.push_back({ActionType::MoveUp});
+        break;
+    case SDLK_w:
+        actions.push_back({ActionType::MoveWordForward, delimiters});
+        break;
+    case SDLK_b:
+        actions.push_back({ActionType::MoveWordBack, delimiters});
+        break;
+    case SDLK_0:
+        actions.push_back({ActionType::MoveStartOfLine});
+        break;
+    case SDLK_4:
+        if (isShift)
+            actions.push_back({ActionType::MoveEndOfLine});
+        break;
+    case SDLK_g:
+        if (isShift)
+            actions.push_back({ActionType::MoveEndOfFile});
+        break;
+    case SDLK_y:
+        actions.push_back({ActionType::Yank});
+        mode = VimMode::NORMAL;
+        actions.push_back({ActionType::ClearVisual});
+        actions.push_back({ActionType::ClampNormal});
+        break;
+    }
+
     return actions;
 }
 

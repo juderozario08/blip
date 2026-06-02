@@ -26,7 +26,11 @@ enum class ActionType {
     InsertBlankLineBelow,
     ClampNormal,
     SaveFile,
-    Quit
+    Quit,
+    StartVisual,
+    ClearVisual,
+    Yank,
+    Paste
 };
 
 struct Action {

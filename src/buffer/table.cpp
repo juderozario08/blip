@@ -162,12 +162,19 @@ void PieceTable::writeToFile(const std::string &filename) const {
     }
 
     for (const auto &piece : pieces) {
-        if (piece.length == 0) {
+        if (piece.length == 0)
             continue;
-        }
         const std::string &source_buf = (piece.source == BufType::ORIGINAL) ? original_buffer : add_buffer;
         out.write(source_buf.data() + piece.start, piece.length);
     }
+
+    if (total_length > 0) {
+        auto last_char = getCharacterFromCursor(total_length - 1);
+        if (last_char && *last_char != '\n') {
+            out.write("\n", 1);
+        }
+    }
+
     out.close();
 }
 }

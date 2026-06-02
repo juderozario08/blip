@@ -381,4 +381,38 @@ void EditorBuffer::insertBlankLineBelowStay() {
 size_t EditorBuffer::getNumberOfLines() { return line_starts.size(); }
 
 void EditorBuffer::saveToFile(const std::string &filename) { table.writeToFile(filename); }
+
+void EditorBuffer::setVisualAnchor() { visual_anchor = cursor_pos; }
+
+void EditorBuffer::clearVisualAnchor() { visual_anchor = std::nullopt; }
+
+bool EditorBuffer::hasSelection() const { return visual_anchor.has_value() && visual_anchor.value() != cursor_pos; }
+
+std::pair<size_t, size_t> EditorBuffer::getSelectionRange() const {
+    if (!visual_anchor.has_value()) {
+        return {cursor_pos, cursor_pos};
+    }
+
+    size_t start = visual_anchor.value();
+    size_t end = cursor_pos;
+
+    if (start > end) {
+        std::swap(start, end);
+    }
+
+    return {start, end};
+}
+
+std::string EditorBuffer::getSelectedText() const {
+    if (!hasSelection())
+        return "";
+
+    auto [start, end] = getSelectionRange();
+
+    std::string full_text = table.getText();
+    if (start >= full_text.length())
+        return "";
+
+    return full_text.substr(start, end - start);
+}
 }

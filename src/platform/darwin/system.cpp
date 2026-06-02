@@ -1,26 +1,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreText/CoreText.h>
 #include <blip/platform/system.hpp>
-#include <fstream>
-#include <iostream>
 
 namespace platform {
-bool readFile(const char *fname, std::string &lines) {
-    std::string filename{fname};
-    std::fstream f{filename};
-
-    if (!f.is_open()) {
-        std::cout << "Could not open file " << filename << std::endl;
-        return false;
-    }
-
-    std::string line = "";
-    while (std::getline(f, line)) {
-        lines += line + "\n";
-    }
-    return true;
-}
-
 std::string getTTFPath(const std::string &a_family, const std::string &a_style) {
     std::string resultPath = "";
 

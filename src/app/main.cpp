@@ -11,9 +11,11 @@
 #include <blip/platform/watcher.hpp>
 #include <blip/text/font_manager.hpp>
 #include <blip/text/typesetter.hpp>
+#include <blip/ui/glyph_cache.hpp>
 #include <blip/ui/renderer.hpp>
 #include <cstdio>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #ifdef _DEV_
@@ -92,16 +94,41 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
                 break;
             case input::ActionType::None:
                 break;
+            case input::ActionType::StartVisual:
+                buffer.setVisualAnchor();
+                break;
+            case input::ActionType::ClearVisual:
+                buffer.clearVisualAnchor();
+                break;
+            case input::ActionType::Yank: {
+                std::string selected = buffer.getSelectedText();
+                if (!selected.empty()) {
+                    SDL_SetClipboardText(selected.c_str());
+                }
+                break;
+            }
+
+            case input::ActionType::Paste: {
+                if (SDL_HasClipboardText()) {
+                    char *clipboardText = SDL_GetClipboardText();
+                    if (clipboardText) {
+                        buffer.insertText(std::string(clipboardText));
+                        SDL_free(clipboardText);
+                    }
+                }
+                break;
+            }
             case input::ActionType::Quit:
                 running = false;
                 break;
-            case input::ActionType::SaveFile:
+            case input::ActionType::SaveFile: {
                 std::string target = action.payload.empty() ? appState.filepath : action.payload;
                 if (!target.empty()) {
                     buffer.saveToFile(target);
                     appState.filepath = target;
                 }
                 break;
+            }
             }
         }
     }
@@ -114,6 +141,8 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
     text::FontManager fonts;
     fonts.updateFontFamily(config.font.family, config.font.size);
+
+    auto glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), config.font.color);
 
     bool dirty = true;
     input::VimEngine vimEngine;
@@ -184,7 +213,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             SDL_Rect editorViewport = {0, config.layout.top_padding, appState.window_width,
                                        appState.window_height - config.layout.status_bar_height - config.layout.top_padding};
 
-            ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport);
+            ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport, *glyphCache);
             ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());
             SDL_RenderPresent(appState.renderer);
         }
@@ -192,6 +221,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
         watcher.check();
 
         if (fonts.updateFontFamily(config.font.family, config.font.size)) {
+            glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), config.font.color);
             dirty = true;
         }
     }
@@ -246,6 +276,11 @@ int main(int argc, char *argv[]) {
     } else {
         appState.filepath = "untitled.txt";
     }
+
+    if (!original_content.empty() && original_content.back() == '\n') {
+        original_content.pop_back();
+    }
+
     buffer::EditorBuffer buffer(original_content);
 
     SDL_StartTextInput();

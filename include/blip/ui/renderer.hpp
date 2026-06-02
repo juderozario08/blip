@@ -7,10 +7,11 @@
 #include <blip/input/vim_engine.hpp>
 #include <blip/text/font_manager.hpp>
 #include <blip/text/typesetter.hpp>
+#include <blip/ui/glyph_cache.hpp>
 
 namespace ui {
 void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
-                text::Typesetter &typesetter, SDL_Rect viewport);
+                text::Typesetter &typesetter, SDL_Rect viewport, const GlyphCache &glyphCache);
 
 void drawBackground(app::AppState &appState, config::EditorConfig &state);
 void drawStatusBar(app::AppState &appState, config::EditorConfig &config, text::FontManager &fonts, input::VimMode mode,
