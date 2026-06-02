@@ -181,10 +181,8 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
             ui::drawBackground(appState, config);
 
-            int barHeight = 30;
-            int topPadding = 10;
-
-            SDL_Rect editorViewport = {0, topPadding, appState.window_width, appState.window_height - barHeight - topPadding};
+            SDL_Rect editorViewport = {0, config.layout.top_padding, appState.window_width,
+                                       appState.window_height - config.layout.status_bar_height - config.layout.top_padding};
 
             ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport);
             ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());

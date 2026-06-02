@@ -9,16 +9,25 @@ enum class LineNumberOpts { LineAbsolute, LineRelative, LineHidden, LineAbsolute
 enum class AutoFormatOpts { FormatManual, FormatOnSave, FormatOnPaste, COUNT };
 enum class AutoSaveModeOpts { SaveOnFocus, SaveDelay, SaveManual, COUNT };
 
-typedef struct Shortcut {
+struct Shortcut {
     Uint16 modifiers = 0;
     SDL_Keycode key = SDLK_UNKNOWN;
-} Shortcut;
+};
 
-typedef struct Theme {
+struct Theme {
     SDL_Color background, foreground, cursor, selection, line_number, whitespace, diff_add, diff_remove, diff_change,
         diagnostic_error, diagnostic_warning, diagnostic_info, popup_background, tooltip_border, completion_background,
         hover_tab_background;
-} Theme;
+};
+
+struct LayoutConfig {
+    int status_bar_height = 30;
+    int top_padding = 10;
+    int bottom_padding = 10;
+    int line_number_offset_x = 10;
+    int text_offset_x = 35;
+    int status_bar_padding_x = 10;
+};
 
 typedef struct Font {
     std::string family;
@@ -55,7 +64,7 @@ typedef struct File {
     bool show_hidden_files;
 } File;
 
-typedef struct EditorConfig {
+struct EditorConfig {
     Theme theme;
     Font font;
     UI ui;
@@ -63,7 +72,9 @@ typedef struct EditorConfig {
     Input input;
     Plugins plugins;
     File file;
-} EditorConfig;
+
+    LayoutConfig layout;
+};
 
 void loadConfig(std::string filepath, EditorConfig &state);
 std::pair<std::string, std::string> parseLine(std::string line);
