@@ -82,6 +82,15 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         return;
     }
 
+    size_t totalLines = buffer.getNumberOfLines();
+
+    std::string gutterString = std::to_string(totalLines) + "  ";
+
+    int gutterPixelWidth = 0;
+    TTF_SizeUTF8(font, gutterString.c_str(), &gutterPixelWidth, nullptr);
+
+    config.layout.text_offset_x = config.layout.line_number_offset_x + gutterPixelWidth;
+
     SDL_RenderSetClipRect(appState.renderer, &viewport);
 
     auto textColor = config.font.color;
