@@ -1,4 +1,5 @@
 #include <blip/buffer/table.hpp>
+#include <fstream>
 
 namespace buffer {
 
@@ -153,5 +154,21 @@ std::optional<char> PieceTable::getCharacterFromCursor(size_t index, int offset)
         curr_length += p.length;
     }
     return std::nullopt;
+}
+
+void PieceTable::writeToFile(const std::string &filename) const {
+    std::ofstream out(filename, std::ios::binary);
+    if (!out.is_open()) {
+        return;
+    }
+
+    for (const auto &piece : pieces) {
+        if (piece.length == 0) {
+            continue;
+        }
+        const std::string &source_buf = (piece.source == BufType::ORIGINAL) ? original_buffer : add_buffer;
+        out.write(source_buf.data() + piece.start, piece.length);
+    }
+    out.close();
 }
 }

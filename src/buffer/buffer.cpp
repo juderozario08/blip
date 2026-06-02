@@ -378,4 +378,6 @@ void EditorBuffer::insertBlankLineBelowStay() {
 }
 
 size_t EditorBuffer::getNumberOfLines() { return line_starts.size(); }
+
+void EditorBuffer::saveToFile(const std::string &filename) { table.writeToFile(filename); }
 }

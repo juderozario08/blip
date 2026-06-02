@@ -24,7 +24,9 @@ enum class ActionType {
     CommitUndo,
     InsertBlankLineAbove,
     InsertBlankLineBelow,
-    ClampNormal
+    ClampNormal,
+    SaveFile,
+    Quit
 };
 
 struct Action {

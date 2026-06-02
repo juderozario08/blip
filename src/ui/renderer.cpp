@@ -107,4 +107,52 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
     // Render Cursor
     drawCursor(appState, config, cursorX, cursorY, lineHeight);
 }
+
+void drawStatusBar(app::AppState &appState, config::EditorConfig &config, text::FontManager &fonts, input::VimMode mode,
+                   const std::string &commandText) {
+    TTF_Font *font = fonts.getFont();
+    if (!font) {
+        return;
+    }
+
+    int barHeight = 30;
+    SDL_Rect statusBar = {0, appState.window_height - barHeight, appState.window_width, barHeight};
+
+    auto bg = config.theme.selection;
+    SDL_SetRenderDrawColor(appState.renderer, bg.r, bg.g, bg.b, 255);
+    SDL_RenderFillRect(appState.renderer, &statusBar);
+
+    std::string modeStr;
+    switch (mode) {
+    case input::VimMode::NORMAL:
+        modeStr = " NORMAL ";
+        break;
+    case input::VimMode::INSERT:
+        modeStr = " INSERT ";
+        break;
+    case input::VimMode::VISUAL:
+        modeStr = " VISUAL ";
+        break;
+    case input::VimMode::COMMAND:
+        modeStr = ":" + commandText;
+        break;
+    default:
+        modeStr = "";
+    }
+
+    if (!modeStr.empty()) {
+        SDL_Surface *textSurf = TTF_RenderUTF8_Blended(font, modeStr.c_str(), config.theme.foreground);
+        if (textSurf) {
+            auto *textTex = SDL_CreateTextureFromSurface(appState.renderer, textSurf);
+            if (textTex) {
+                SDL_Rect textRect = {10, appState.window_height - barHeight + (barHeight - textSurf->h) / 2, textSurf->w,
+                                     textSurf->h};
+                SDL_RenderCopy(appState.renderer, textTex, nullptr, &textRect);
+                SDL_DestroyTexture(textTex);
+            }
+            SDL_FreeSurface(textSurf);
+        }
+    }
+}
+
 }

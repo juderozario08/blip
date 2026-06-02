@@ -32,6 +32,7 @@ class PieceTable {
 
     State getState() const;
     void restoreState(const State &state);
+    void writeToFile(const std::string &filename) const;
 
   private:
     std::string original_buffer;

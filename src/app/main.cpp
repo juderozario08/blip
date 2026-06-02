@@ -22,7 +22,8 @@
 #define DEV(...)
 #endif
 
-void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer) {
+void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer, bool &running,
+                     std::string &current_filepath) {
     for (const auto &action : actions) {
         for (int i = 0; i < action.count; i++) {
             switch (action.type) {
@@ -91,13 +92,23 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
                 break;
             case input::ActionType::None:
                 break;
+            case input::ActionType::Quit:
+                running = false;
+                break;
+            case input::ActionType::SaveFile:
+                std::string target_file = action.payload.empty() ? current_filepath : action.payload;
+                if (!target_file.empty()) {
+                    buffer.saveToFile(target_file);
+                    current_filepath = target_file;
+                }
+                break;
             }
         }
     }
 }
 
 void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
-               buffer::EditorBuffer &buffer) {
+               buffer::EditorBuffer &buffer, std::string current_filepath) {
     auto running = true;
     SDL_Event event;
 
@@ -121,14 +132,14 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             } else if (event.type == SDL_TEXTINPUT) {
                 auto actions = vimEngine.handleTextInput(event.text.text);
                 if (!actions.empty()) {
-                    dispatchActions(actions, buffer);
+                    dispatchActions(actions, buffer, running, current_filepath);
                     dirty = true;
                 }
             } else if (event.type == SDL_KEYDOWN) {
                 if (config.input.vim_mode) {
                     auto actions = vimEngine.handleKeyDown(event);
                     if (!actions.empty()) {
-                        dispatchActions(actions, buffer);
+                        dispatchActions(actions, buffer, running, current_filepath);
                         dirty = true;
                     }
                 } else {
@@ -163,6 +174,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
             ui::drawBackground(appState, config);
             ui::drawEditor(appState, buffer, config, fonts, typesetter);
+            ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());
             SDL_RenderPresent(appState.renderer);
         }
 
@@ -222,8 +234,10 @@ int main(int argc, char *argv[]) {
     }
     buffer::EditorBuffer buffer(original_content);
 
+    std::string current_filepath = (argc == 2) ? argv[1] : "CMakeLists.txt";
+
     SDL_StartTextInput();
-    eventLoop(appState, watcher, config, buffer);
+    eventLoop(appState, watcher, config, buffer, current_filepath);
     SDL_StopTextInput();
 
     SDL_DestroyRenderer(appState.renderer);

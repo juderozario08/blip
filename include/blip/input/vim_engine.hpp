@@ -17,10 +17,12 @@ class VimEngine {
     std::vector<Action> handleTextInput(const std::string &text);
 
     VimMode getMode() const;
+    const std::string &getActiveCommand() const;
 
   private:
     VimMode mode;
     std::string command_buffer;
+    std::string active_command;
 
     std::vector<Action> handleNormalMode(const SDL_Event &event);
     std::vector<Action> handleInsertMode(const SDL_Event &event);

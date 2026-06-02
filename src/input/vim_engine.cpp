@@ -13,9 +13,15 @@ std::vector<Action> VimEngine::handleTextInput(const std::string &text) {
         return actions;
     }
 
+    if (mode == VimMode::COMMAND) {
+        active_command = text;
+        return actions;
+    }
+
     if (mode == VimMode::NORMAL) {
         if (text == ":") {
             mode = VimMode::COMMAND;
+            active_command.clear();
         } else if (text == "i") {
             mode = VimMode::INSERT;
         } else if (text == "I") {
@@ -60,7 +66,7 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
     bool isCtrl = (event.key.keysym.mod & KMOD_CTRL);
     bool isShift = (event.key.keysym.mod & KMOD_SHIFT);
 
-    // 1. CONTROL BINDINGS
+    // CONTROL BINDINGS
     if (isCtrl) {
         if (event.key.keysym.sym == SDLK_d) {
             actions.push_back({ActionType::MoveDown, "", 15});
@@ -74,7 +80,7 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         return actions;
     }
 
-    // 2. DOUBLE-STROKE COMMANDS
+    // DOUBLE-STROKE COMMANDS
     if (event.key.keysym.sym == SDLK_g && !isShift) {
         if (command_buffer == "g") {
             actions.push_back({ActionType::MoveStartOfFile});
@@ -87,7 +93,7 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         command_buffer = "";
     }
 
-    // 3. STANDARD BINDINGS
+    // STANDARD BINDINGS
     std::string delimiters = isShift ? " " : " .@+-/:(){}[]&,;";
 
     switch (event.key.keysym.sym) {
@@ -183,10 +189,39 @@ std::vector<Action> VimEngine::handleVisualMode(const SDL_Event &event) {
 
 std::vector<Action> VimEngine::handleCommandMode(const SDL_Event &event) {
     std::vector<Action> actions;
-    if (event.key.keysym.sym == SDLK_ESCAPE) {
+    switch (event.key.keysym.sym) {
+    case SDLK_ESCAPE:
         mode = VimMode::NORMAL;
+        active_command.clear();
         actions.push_back({ActionType::ClampNormal});
+        break;
+    case SDLK_BACKSPACE:
+        if (!active_command.empty()) {
+            active_command.pop_back();
+        } else {
+            mode = VimMode::NORMAL;
+            actions.push_back({ActionType::ClampNormal});
+        }
+        break;
+    case SDLK_RETURN:
+    case SDLK_KP_ENTER:
+        if (active_command == "w") {
+            actions.push_back({ActionType::SaveFile, ""});
+        } else if (active_command == "q") {
+            actions.push_back({ActionType::Quit, ""});
+        } else if (active_command == "wq") {
+            actions.push_back({ActionType::SaveFile, ""});
+            actions.push_back({ActionType::Quit, ""});
+        } else if (active_command.rfind("w ", 0) == 0) {
+            actions.push_back({ActionType::SaveFile, active_command.substr(2)});
+        }
+
+        mode = VimMode::NORMAL;
+        active_command.clear();
+        break;
     }
     return actions;
 }
+
+const std::string &VimEngine::getActiveCommand() const { return active_command; }
 }

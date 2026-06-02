@@ -52,6 +52,7 @@ class EditorBuffer {
     void moveToEndOfLine();
     void moveToStartOfFile();
     void moveToEndOfFile();
+    void saveToFile(const std::string &filename);
 
   private:
     PieceTable table;
