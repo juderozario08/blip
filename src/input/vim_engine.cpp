@@ -14,7 +14,7 @@ std::vector<Action> VimEngine::handleTextInput(const std::string &text) {
     }
 
     if (mode == VimMode::COMMAND) {
-        active_command = text;
+        active_command += text;
         return actions;
     }
 

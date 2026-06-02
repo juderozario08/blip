@@ -53,28 +53,32 @@ void EditorBuffer::commit() {
     if (!redo_stack.empty()) {
         redo_stack.clear();
     }
-    undo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts});
+    undo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts, desired_col});
 }
 
 void EditorBuffer::undo() {
-    if (undo_stack.empty())
+    if (undo_stack.empty()) {
         return;
-    redo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts});
+    }
+    redo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts, desired_col});
     EditRecord record = std::move(undo_stack.back());
     table.restoreState(record.table_state);
     setCursor(record.cursor_position);
     line_starts = record.line_starts;
+    desired_col = record.desired_col;
     undo_stack.pop_back();
 }
 
 void EditorBuffer::redo() {
-    if (redo_stack.empty())
+    if (redo_stack.empty()) {
         return;
-    undo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts});
+    }
+    undo_stack.push_back(EditRecord{table.getState(), cursor_pos, line_starts, desired_col});
     EditRecord record = std::move(redo_stack.back());
     table.restoreState(record.table_state);
     setCursor(record.cursor_position);
     line_starts = record.line_starts;
+    desired_col = record.desired_col;
     redo_stack.pop_back();
 }
 
@@ -238,10 +242,7 @@ void EditorBuffer::insertNewLineNext() {
     if (cursor_pos < len)
         cursor_pos++;
     setCursor(cursor_pos);
-    size_t new_line_pos = cursor_pos;
     insertText("\n");
-    if (new_line_pos < len)
-        setCursor(new_line_pos);
 }
 
 void EditorBuffer::insertNewLinePrev() {

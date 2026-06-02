@@ -23,7 +23,7 @@
 #endif
 
 void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer, bool &running,
-                     std::string &current_filepath) {
+                     app::AppState &appState) {
     for (const auto &action : actions) {
         for (int i = 0; i < action.count; i++) {
             switch (action.type) {
@@ -96,10 +96,10 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
                 running = false;
                 break;
             case input::ActionType::SaveFile:
-                std::string target_file = action.payload.empty() ? current_filepath : action.payload;
-                if (!target_file.empty()) {
-                    buffer.saveToFile(target_file);
-                    current_filepath = target_file;
+                std::string target = action.payload.empty() ? appState.filepath : action.payload;
+                if (!target.empty()) {
+                    buffer.saveToFile(target);
+                    appState.filepath = target;
                 }
                 break;
             }
@@ -108,7 +108,7 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
 }
 
 void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
-               buffer::EditorBuffer &buffer, std::string current_filepath) {
+               buffer::EditorBuffer &buffer) {
     auto running = true;
     SDL_Event event;
 
@@ -129,21 +129,28 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                     SDL_GetWindowSize(appState.window, &appState.window_width, &appState.window_height);
                     dirty = true;
                 }
-            } else if (event.type == SDL_TEXTINPUT) {
-                auto actions = vimEngine.handleTextInput(event.text.text);
-                if (!actions.empty()) {
-                    dispatchActions(actions, buffer, running, current_filepath);
-                    dirty = true;
-                }
-            } else if (event.type == SDL_KEYDOWN) {
-                if (config.input.vim_mode) {
+            } else if (event.type == SDL_TEXTINPUT || event.type == SDL_KEYDOWN) {
+
+                input::VimMode prevMode = vimEngine.getMode();
+                std::string prevCmd = vimEngine.getActiveCommand();
+                bool action_taken = false;
+
+                if (event.type == SDL_TEXTINPUT) {
+                    auto actions = vimEngine.handleTextInput(event.text.text);
+                    if (!actions.empty()) {
+                        dispatchActions(actions, buffer, running, appState);
+                        action_taken = true;
+                    }
+                } else if (event.type == SDL_KEYDOWN && config.input.vim_mode) {
                     auto actions = vimEngine.handleKeyDown(event);
                     if (!actions.empty()) {
-                        dispatchActions(actions, buffer, running, current_filepath);
-                        dirty = true;
+                        dispatchActions(actions, buffer, running, appState);
+                        action_taken = true;
                     }
-                } else {
-                    // TODO: ADD STANDARD KEYBINDS HERE
+                }
+
+                if (action_taken || vimEngine.getMode() != prevMode || vimEngine.getActiveCommand() != prevCmd) {
+                    dirty = true;
                 }
             }
         }
@@ -173,7 +180,13 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             std::cout << " | Cursor: " << buffer.getCursor() << " | Lines: " << buffer.getNumberOfLines() << " |\n";
 
             ui::drawBackground(appState, config);
-            ui::drawEditor(appState, buffer, config, fonts, typesetter);
+
+            int barHeight = 30;
+            int topPadding = 10;
+
+            SDL_Rect editorViewport = {0, topPadding, appState.window_width, appState.window_height - barHeight - topPadding};
+
+            ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport);
             ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());
             SDL_RenderPresent(appState.renderer);
         }
@@ -216,7 +229,7 @@ int main(int argc, char *argv[]) {
     }
 
     config::EditorConfig config;
-    config::setDefaultConifg(config);
+    config::setDefaultConfig(config);
     platform::ConfigWatcher watcher;
 
     // TODO: Calculate filepath using system file lookup
@@ -230,14 +243,15 @@ int main(int argc, char *argv[]) {
 
     std::string original_content = "";
     if (argc == 2) {
+        appState.filepath = argv[1];
         platform::readFile(argv[1], original_content);
+    } else {
+        appState.filepath = "untitled.txt";
     }
     buffer::EditorBuffer buffer(original_content);
 
-    std::string current_filepath = (argc == 2) ? argv[1] : "CMakeLists.txt";
-
     SDL_StartTextInput();
-    eventLoop(appState, watcher, config, buffer, current_filepath);
+    eventLoop(appState, watcher, config, buffer);
     SDL_StopTextInput();
 
     SDL_DestroyRenderer(appState.renderer);

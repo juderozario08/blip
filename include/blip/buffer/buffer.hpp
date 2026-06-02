@@ -7,11 +7,12 @@
 
 namespace buffer {
 
-typedef struct {
+struct EditRecord {
     PieceTable::State table_state;
     size_t cursor_position;
     std::vector<size_t> line_starts;
-} EditRecord;
+    size_t desired_col;
+};
 
 class EditorBuffer {
   public:

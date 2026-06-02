@@ -30,8 +30,7 @@ void ConfigWatcher::stop() {
 }
 
 void ConfigWatcher::check() {
-    if (fileDirty) {
-        fileDirty = false;
+    if (fileDirty.exchange(false)) {
         if (action) {
             action();
         }

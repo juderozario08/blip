@@ -67,7 +67,7 @@ typedef struct EditorConfig {
 
 void loadConfig(std::string filepath, EditorConfig &state);
 std::pair<std::string, std::string> parseLine(std::string line);
-void setDefaultConifg(EditorConfig &state);
+void setDefaultConfig(EditorConfig &state);
 void setForegroundColor(app::AppState &appState, EditorConfig &state);
 void setCursorColor(app::AppState &appState, EditorConfig &state);
 void setSelectionColor(app::AppState &appState, EditorConfig &state);

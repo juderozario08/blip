@@ -8,15 +8,17 @@ void drawBackground(app::AppState &appState, config::EditorConfig &state) {
     SDL_RenderClear(appState.renderer);
 }
 
-static void updateCamera(app::AppState &appState, int cursorY, int lineHeight) {
-    if (cursorY + lineHeight > appState.scroll_y + appState.window_height - 20) {
-        appState.scroll_y = cursorY + lineHeight - appState.window_height + 20;
+static void updateCamera(app::AppState &appState, int cursorY, int lineHeight, const SDL_Rect &viewport) {
+    int paddingBottom = 11;
+    if (cursorY + lineHeight > appState.scroll_y + viewport.h - paddingBottom) {
+        appState.scroll_y = cursorY + lineHeight - viewport.h + paddingBottom;
     } else if (cursorY < appState.scroll_y) {
         appState.scroll_y = cursorY;
     }
 }
 
-static void drawCursor(app::AppState &appState, config::EditorConfig &config, int cursorX, int cursorY, int lineHeight) {
+static void drawCursor(app::AppState &appState, config::EditorConfig &config, int cursorX, int cursorY, int lineHeight,
+                       const SDL_Rect &viewport) {
     int cursorWidth;
     int halfWidth;
 
@@ -30,7 +32,7 @@ static void drawCursor(app::AppState &appState, config::EditorConfig &config, in
         break;
     }
 
-    SDL_Rect cursorRect = {30 + cursorX - 1, 10 + cursorY - appState.scroll_y - 1, cursorWidth, lineHeight};
+    SDL_Rect cursorRect = {viewport.x + 30 + cursorX - 1, viewport.y + cursorY - appState.scroll_y - 1, cursorWidth, lineHeight};
     auto cursorColor = config.theme.cursor;
 
     SDL_SetRenderDrawColor(appState.renderer, cursorColor.r, cursorColor.g, cursorColor.b, 100);
@@ -39,73 +41,72 @@ static void drawCursor(app::AppState &appState, config::EditorConfig &config, in
 }
 
 static void drawLine(app::AppState &appState, TTF_Font *font, const text::VisualLine &line, int lineCount, int draw_y,
-                     const SDL_Color &textColor) {
-    // Draw Line Number
+                     const SDL_Color &textColor, const SDL_Rect &viewport) {
     SDL_Surface *lineNumSurface = TTF_RenderUTF8_Blended(font, std::to_string(lineCount).c_str(), textColor);
-    if (lineNumSurface) {
-        auto *lineNumTexture = SDL_CreateTextureFromSurface(appState.renderer, lineNumSurface);
-        if (lineNumTexture) {
-            SDL_Rect lineNumRect = {10, draw_y, lineNumSurface->w, lineNumSurface->h};
-            SDL_RenderCopy(appState.renderer, lineNumTexture, nullptr, &lineNumRect);
-        }
+    if (!lineNumSurface)
+        return;
+
+    SDL_Texture *lineNumTexture = SDL_CreateTextureFromSurface(appState.renderer, lineNumSurface);
+    if (lineNumTexture) {
+        // Offset X by viewport.x
+        SDL_Rect lineNumRect = {viewport.x + 10, draw_y, lineNumSurface->w, lineNumSurface->h};
+        SDL_RenderCopy(appState.renderer, lineNumTexture, nullptr, &lineNumRect);
         SDL_DestroyTexture(lineNumTexture);
     }
+    SDL_FreeSurface(lineNumSurface);
 
-    if (line.text.empty()) {
-        SDL_FreeSurface(lineNumSurface);
+    if (line.text.empty())
         return;
-    }
 
-    // Draw Text
     SDL_Surface *lineSurface = TTF_RenderUTF8_Blended(font, line.text.c_str(), textColor);
-    if (lineSurface && lineNumSurface) {
-        auto *lineTexture = SDL_CreateTextureFromSurface(appState.renderer, lineSurface);
-        if (lineTexture) {
-            SDL_Rect lineRect = {30, draw_y, lineSurface->w, lineSurface->h};
-            SDL_RenderCopy(appState.renderer, lineTexture, nullptr, &lineRect);
-        }
+    if (!lineSurface)
+        return;
+
+    SDL_Texture *lineTexture = SDL_CreateTextureFromSurface(appState.renderer, lineSurface);
+    if (lineTexture) {
+        // Offset X by viewport.x
+        SDL_Rect lineRect = {viewport.x + 30, draw_y, lineSurface->w, lineSurface->h};
+        SDL_RenderCopy(appState.renderer, lineTexture, nullptr, &lineRect);
         SDL_DestroyTexture(lineTexture);
     }
     SDL_FreeSurface(lineSurface);
-    SDL_FreeSurface(lineNumSurface);
 }
 
 void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
-                text::Typesetter &typesetter) {
+                text::Typesetter &typesetter, SDL_Rect viewport) {
     TTF_Font *font = fonts.getFont();
-    if (!font)
+    if (!font) {
         return;
+    }
+
+    SDL_RenderSetClipRect(appState.renderer, &viewport);
 
     auto textColor = config.font.color;
     auto lines = typesetter.layout(buffer, config);
     auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
     int lineHeight = config.font.size + 2;
 
-    // Update Viewport
-    updateCamera(appState, cursorY, lineHeight);
+    updateCamera(appState, cursorY, lineHeight, viewport);
 
-    // Render Visible Lines
     int lineCount = 1;
     for (const auto &line : lines) {
-        int draw_y = 10 + line.y_pixel_offset - appState.scroll_y;
+        int draw_y = viewport.y + line.y_pixel_offset - appState.scroll_y;
 
-        // Culling
-        if (draw_y + lineHeight < 0) {
+        if (draw_y + lineHeight < viewport.y) {
             lineCount++;
             continue;
         }
-        if (draw_y > appState.window_height) {
+        if (draw_y > viewport.y + viewport.h) {
             break;
         }
 
-        // Delegate rendering
-        drawLine(appState, font, line, lineCount, draw_y, textColor);
-
+        drawLine(appState, font, line, lineCount, draw_y, textColor, viewport);
         lineCount++;
     }
 
-    // Render Cursor
-    drawCursor(appState, config, cursorX, cursorY, lineHeight);
+    drawCursor(appState, config, cursorX, cursorY, lineHeight, viewport);
+
+    SDL_RenderSetClipRect(appState.renderer, NULL);
 }
 
 void drawStatusBar(app::AppState &appState, config::EditorConfig &config, text::FontManager &fonts, input::VimMode mode,

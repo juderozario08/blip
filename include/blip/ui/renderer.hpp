@@ -10,7 +10,8 @@
 
 namespace ui {
 void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
-                text::Typesetter &typesetter);
+                text::Typesetter &typesetter, SDL_Rect viewport);
+
 void drawBackground(app::AppState &appState, config::EditorConfig &state);
 void drawStatusBar(app::AppState &appState, config::EditorConfig &config, text::FontManager &fonts, input::VimMode mode,
                    const std::string &commandText);

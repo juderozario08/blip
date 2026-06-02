@@ -149,7 +149,6 @@ std::optional<char> PieceTable::getCharacterFromCursor(size_t index, int offset)
             } else {
                 return add_buffer[p.start + piece_offset];
             }
-            break;
         }
         curr_length += p.length;
     }

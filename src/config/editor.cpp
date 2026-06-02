@@ -135,7 +135,7 @@ void handleShortcutString(std::string value, Shortcut &dst, Shortcut def) {
     }
 }
 
-void setDefaultConifg(EditorConfig &state) {
+void setDefaultConfig(EditorConfig &state) {
     state.theme.background = defaults::theme::BACKGROUND;
     state.theme.foreground = defaults::theme::FOREGROUND;
     state.theme.cursor = defaults::theme::CURSOR;
@@ -151,6 +151,7 @@ void setDefaultConifg(EditorConfig &state) {
     state.theme.popup_background = defaults::theme::POPUP_BACKGROUND;
     state.theme.tooltip_border = defaults::theme::TOOLTIP_BORDER;
     state.theme.completion_background = defaults::theme::COMPLETION_BACKGROUND;
+    state.theme.hover_tab_background = defaults::theme::HOVER_TAB_BACKGROUND;
 
     state.font.family = defaults::font::FAMILY;
     state.font.color = defaults::font::COLOR;
@@ -260,7 +261,7 @@ void handleUIConfigUpdates(std::string key, std::string value, EditorConfig &sta
         if (!parseNum(value, style)) {
             state.ui.cursor_style = defaults::ui::CURSOR_STYLE;
         } else {
-            if (style > 0 && style < static_cast<int>(CursorStyleOpts::COUNT)) {
+            if (style >= 0 && style < static_cast<int>(CursorStyleOpts::COUNT)) {
                 switch (auto ns = static_cast<CursorStyleOpts>(style)) {
                 case CursorStyleOpts::CursorBlock:
                 case CursorStyleOpts::CursorLine:
@@ -279,7 +280,7 @@ void handleUIConfigUpdates(std::string key, std::string value, EditorConfig &sta
         if (!parseNum(value, style)) {
             state.ui.line_numbers = defaults::ui::LINE_NUMBERS;
         } else {
-            if (style > 0 && style < static_cast<int>(LineNumberOpts::COUNT)) {
+            if (style >= 0 && style < static_cast<int>(LineNumberOpts::COUNT)) {
                 switch (auto ln = static_cast<LineNumberOpts>(style)) {
                 case LineNumberOpts::LineAbsolute:
                 case LineNumberOpts::LineHidden:
@@ -318,7 +319,7 @@ void handlePreferenceConfigUpdates(std::string key, std::string value, EditorCon
     // Preference Config Update
     if (key == constants::preference::TAB_WIDTH) {
         int width;
-        if (!parseNum(value, width)) {
+        if (parseNum(value, width)) {
             state.preference.tab_width = width <= 2 ? defaults::preference::TAB_WIDTH : width;
         } else {
             state.preference.tab_width = defaults::preference::TAB_WIDTH;
@@ -328,7 +329,7 @@ void handlePreferenceConfigUpdates(std::string key, std::string value, EditorCon
         if (!parseNum(value, format)) {
             state.preference.auto_format = defaults::preference::AUTO_FORMAT;
         } else {
-            if (format > 0 && format < static_cast<int>(AutoFormatOpts::COUNT)) {
+            if (format >= 0 && format < static_cast<int>(AutoFormatOpts::COUNT)) {
                 switch (auto fmt = static_cast<AutoFormatOpts>(format)) {
                 case AutoFormatOpts::FormatManual:
                 case AutoFormatOpts::FormatOnSave:
@@ -403,7 +404,7 @@ void handleFileConfigUpdates(std::string key, std::string value, EditorConfig &s
         if (!parseNum(value, m)) {
             state.file.autosave_mode = defaults::file::AUTOSAVE_MODE;
         } else {
-            if (m > 0 && m < static_cast<int>(AutoSaveModeOpts::COUNT)) {
+            if (m >= 0 && m < static_cast<int>(AutoSaveModeOpts::COUNT)) {
                 switch (auto mode = static_cast<AutoSaveModeOpts>(m)) {
                 case AutoSaveModeOpts::SaveManual:
                 case AutoSaveModeOpts::SaveDelay:
@@ -418,7 +419,7 @@ void handleFileConfigUpdates(std::string key, std::string value, EditorConfig &s
                 state.file.autosave_mode = defaults::file::AUTOSAVE_MODE;
             }
         }
-    } else if (key == constants::file::AUTOSAVE_MODE) {
+    } else if (key == constants::file::SHOW_HIDDEN_FILES) {
         handleBoolUpdate(value, &state.file.show_hidden_files, defaults::file::SHOW_HIDDEN_FILES);
     }
 }
