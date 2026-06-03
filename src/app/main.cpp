@@ -143,11 +143,9 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     text::FontManager fonts;
     fonts.updateFontFamily(config.font.family, config.font.size);
 
-    // CHANGED: Base textures must be white to support hardware syntax tinting later
     SDL_Color pureWhite = {255, 255, 255, 255};
     auto glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), pureWhite);
 
-    // ADDED: Instantiate the Syntax Engine
     text::SyntaxEngine syntaxEngine;
 
     bool dirty = true;

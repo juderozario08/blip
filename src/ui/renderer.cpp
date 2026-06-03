@@ -82,7 +82,6 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
 
     current_x = viewport.x + config.layout.text_offset_x;
 
-    // CHANGED: Use index-based loop so we can calculate the absolute byteIndex for the AST
     for (size_t i = 0; i < line.text.length(); i++) {
         char c = line.text[i];
         if (c == '\t') {
@@ -92,10 +91,8 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
 
         const auto &glyph = glyphCache.getGlyph(c);
         if (glyph.texture) {
-            // ADDED: Ask Tree-sitter for the color at this exact byte index
             SDL_Color color = syntaxEngine.getColorForByte(lineStartIdx + i, config.theme);
 
-            // ADDED: Hardware-tint the white texture before drawing
             SDL_SetTextureColorMod(glyph.texture, color.r, color.g, color.b);
 
             SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
