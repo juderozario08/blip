@@ -21,5 +21,4 @@ class SyntaxEngine {
     TSParser *parser = nullptr;
     TSTree *tree = nullptr;
 };
-
 }

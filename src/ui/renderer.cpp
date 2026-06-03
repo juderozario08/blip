@@ -41,15 +41,18 @@ static void drawCursor(app::AppState &appState, config::EditorConfig &config, in
     SDL_RenderFillRect(appState.renderer, &cursorRect);
 }
 
+// ADDED: syntaxEngine parameter
 static void drawLine(app::AppState &appState, const text::VisualLine &line, int lineCount, int draw_y, const SDL_Rect &viewport,
                      config::EditorConfig &config, int lineHeight, bool hasSelection, size_t selStart, size_t selEnd,
-                     size_t lineStartIdx, const GlyphCache &glyphCache) {
+                     size_t lineStartIdx, const GlyphCache &glyphCache, text::SyntaxEngine &syntaxEngine) {
 
     std::string lineNumStr = std::to_string(lineCount);
     int current_x = viewport.x + config.layout.line_number_offset_x;
     for (char c : lineNumStr) {
         const auto &glyph = glyphCache.getGlyph(c);
         if (glyph.texture) {
+            // FIX: Tint line numbers grey so they don't inherit syntax colors from the previous line
+            SDL_SetTextureColorMod(glyph.texture, 100, 100, 100);
             SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
             SDL_RenderCopy(appState.renderer, glyph.texture, nullptr, &dest);
             current_x += glyph.width;
@@ -78,7 +81,10 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
     }
 
     current_x = viewport.x + config.layout.text_offset_x;
-    for (char c : line.text) {
+
+    // CHANGED: Use index-based loop so we can calculate the absolute byteIndex for the AST
+    for (size_t i = 0; i < line.text.length(); i++) {
+        char c = line.text[i];
         if (c == '\t') {
             current_x += glyphCache.getGlyph(' ').width * config.preference.tab_width;
             continue;
@@ -86,6 +92,12 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
 
         const auto &glyph = glyphCache.getGlyph(c);
         if (glyph.texture) {
+            // ADDED: Ask Tree-sitter for the color at this exact byte index
+            SDL_Color color = syntaxEngine.getColorForByte(lineStartIdx + i, config.theme);
+
+            // ADDED: Hardware-tint the white texture before drawing
+            SDL_SetTextureColorMod(glyph.texture, color.r, color.g, color.b);
+
             SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
             SDL_RenderCopy(appState.renderer, glyph.texture, nullptr, &dest);
             current_x += glyph.width;
@@ -94,7 +106,8 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
 }
 
 void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::EditorConfig &config, text::FontManager &fonts,
-                text::Typesetter &typesetter, SDL_Rect viewport, const ui::GlyphCache &glyphCache) {
+                text::Typesetter &typesetter, SDL_Rect viewport, const ui::GlyphCache &glyphCache,
+                text::SyntaxEngine &syntaxEngine) {
 
     TTF_Font *font = fonts.getFont();
     if (!font) {
@@ -136,8 +149,9 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
             break;
         }
 
+        // ADDED: Pass syntaxEngine down
         drawLine(appState, line, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd, currentCharIdx,
-                 glyphCache);
+                 glyphCache, syntaxEngine);
 
         lineCount++;
         currentCharIdx += currentLineLength;
@@ -158,8 +172,9 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         if (draw_y + lineHeight >= viewport.y) {
             text::VisualLine emptyLine;
             emptyLine.text = "";
+            // ADDED: Pass syntaxEngine down
             drawLine(appState, emptyLine, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd,
-                     currentCharIdx, glyphCache);
+                     currentCharIdx, glyphCache, syntaxEngine);
         }
 
         lineCount++;

@@ -1,5 +1,4 @@
 #include <blip/text/syntax.hpp>
-#include <cstring>
 
 extern "C" const TSLanguage *tree_sitter_cpp();
 
@@ -52,5 +51,4 @@ SDL_Color SyntaxEngine::getColorForByte(uint32_t byteIndex, const config::Theme 
 
     return theme.foreground;
 }
-
 }

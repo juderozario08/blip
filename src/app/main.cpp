@@ -10,6 +10,7 @@
 #include <blip/platform/system.hpp>
 #include <blip/platform/watcher.hpp>
 #include <blip/text/font_manager.hpp>
+#include <blip/text/syntax.hpp> // ADDED: Syntax Engine Header
 #include <blip/text/typesetter.hpp>
 #include <blip/ui/glyph_cache.hpp>
 #include <blip/ui/renderer.hpp>
@@ -142,7 +143,12 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     text::FontManager fonts;
     fonts.updateFontFamily(config.font.family, config.font.size);
 
-    auto glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), config.font.color);
+    // CHANGED: Base textures must be white to support hardware syntax tinting later
+    SDL_Color pureWhite = {255, 255, 255, 255};
+    auto glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), pureWhite);
+
+    // ADDED: Instantiate the Syntax Engine
+    text::SyntaxEngine syntaxEngine;
 
     bool dirty = true;
     input::VimEngine vimEngine;
@@ -187,7 +193,6 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
         if (dirty) {
             dirty = false;
 
-            // Helpful debugging output for the console
             std::cout << "| Mode: ";
             switch (vimEngine.getMode()) {
             case input::VimMode::NORMAL:
@@ -208,12 +213,16 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             }
             std::cout << " | Cursor: " << buffer.getCursor() << " | Lines: " << buffer.getNumberOfLines() << " |\n";
 
+            // ADDED: Re-parse the AST before we draw
+            syntaxEngine.parse(buffer.getText());
+
             ui::drawBackground(appState, config);
 
             SDL_Rect editorViewport = {0, config.layout.top_padding, appState.window_width,
                                        appState.window_height - config.layout.status_bar_height - config.layout.top_padding};
 
-            ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport, *glyphCache);
+            // CHANGED: Pass the syntax engine down into drawEditor
+            ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport, *glyphCache, syntaxEngine);
             ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());
             SDL_RenderPresent(appState.renderer);
         }
@@ -221,13 +230,13 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
         watcher.check();
 
         if (fonts.updateFontFamily(config.font.family, config.font.size)) {
-            glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), config.font.color);
+            // CHANGED: Ensure pureWhite is applied when font changes
+            glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), pureWhite);
             dirty = true;
         }
     }
 }
 
-// TODO: MIGHT WANT TO DISPLAY ERRORS USING A NEW WINDOW SO THE USER STAYS INFORMED
 int main(int argc, char *argv[]) {
     app::AppState appState;
     if (SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO) < 0) {
@@ -260,7 +269,6 @@ int main(int argc, char *argv[]) {
     config::setDefaultConfig(config);
     platform::ConfigWatcher watcher;
 
-    // TODO: Calculate filepath using system file lookup
     std::string filepath = "config.ini";
     config::loadConfig(filepath, config);
     DEV(core::printState(config));
