@@ -64,12 +64,11 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
         std::string textBefore = line.text.substr(0, hlStart - lineStartIdx);
         std::string textHighlight = line.text.substr(hlStart - lineStartIdx, hlEnd - hlStart);
 
-        // Instantly measure widths using our O(1) cache instead of TTF_SizeUTF8
         int xOffset = glyphCache.measureString(textBefore, config.preference.tab_width);
         int hlWidth = glyphCache.measureString(textHighlight, config.preference.tab_width);
 
         if (selEnd > lineEndIdx) {
-            hlWidth += glyphCache.getGlyph(' ').width; // Highlight the invisible \n
+            hlWidth += glyphCache.getGlyph(' ').width;
         }
 
         SDL_Rect hlRect = {viewport.x + config.layout.text_offset_x + xOffset, draw_y, hlWidth, lineHeight};
@@ -78,7 +77,6 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
         SDL_RenderFillRect(appState.renderer, &hlRect);
     }
 
-    // 3. Draw the actual Text Characters using the cache!
     current_x = viewport.x + config.layout.text_offset_x;
     for (char c : line.text) {
         if (c == '\t') {
@@ -143,6 +141,30 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
 
         lineCount++;
         currentCharIdx += currentLineLength;
+    }
+
+    int next_y_offset = 0;
+    if (!lines.empty()) {
+        next_y_offset = lines.back().y_pixel_offset + lineHeight;
+    }
+
+    while (lineCount <= totalLines) {
+        int draw_y = viewport.y + next_y_offset - appState.scroll_y;
+
+        if (draw_y > viewport.y + viewport.h) {
+            break;
+        }
+
+        if (draw_y + lineHeight >= viewport.y) {
+            text::VisualLine emptyLine;
+            emptyLine.text = "";
+            drawLine(appState, emptyLine, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd,
+                     currentCharIdx, glyphCache);
+        }
+
+        lineCount++;
+        currentCharIdx++;
+        next_y_offset += lineHeight;
     }
 
     drawCursor(appState, config, cursorX, cursorY, lineHeight, viewport);
