@@ -239,8 +239,7 @@ void EditorBuffer::insertNewLineNext() {
             break;
         cursor_pos++;
     }
-    if (cursor_pos < len)
-        cursor_pos++;
+
     setCursor(cursor_pos);
     insertText("\n");
 }

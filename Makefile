@@ -1,5 +1,7 @@
 all:
 	./scripts.sh
+file:
+	./scripts.sh file
 dev:
 	./scripts.sh dev
 test:

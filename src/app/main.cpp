@@ -10,7 +10,7 @@
 #include <blip/platform/system.hpp>
 #include <blip/platform/watcher.hpp>
 #include <blip/text/font_manager.hpp>
-#include <blip/text/syntax.hpp> // ADDED: Syntax Engine Header
+#include <blip/text/syntax.hpp>
 #include <blip/text/typesetter.hpp>
 #include <blip/ui/glyph_cache.hpp>
 #include <blip/ui/renderer.hpp>
