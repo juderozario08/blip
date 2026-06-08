@@ -15,6 +15,8 @@
 #include <blip/ui/glyph_cache.hpp>
 #include <blip/ui/renderer.hpp>
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -24,6 +26,68 @@
 #else
 #define DEV(...)
 #endif
+
+std::string getFileExtension(const std::string &filename) {
+    auto index = filename.rfind(".");
+    return filename.substr(index + 1);
+}
+
+std::string getOrInstallLanguage(const std::string &language) {
+    std::string pluginDir = "plugins/parsers";
+
+    std::string extension = ".so";
+#ifdef __APPLE__
+    extension = ".dylib";
+#endif
+
+    std::string pluginFile = pluginDir + "/tree_sitter_" + language + extension;
+
+    if (std::filesystem::exists(pluginFile)) {
+        return pluginFile;
+    }
+
+    std::cout << "Language plugin '" << language << "' missing. Downloading..." << std::endl;
+
+    std::filesystem::create_directories(pluginDir);
+
+    std::string tmpTar = "/tmp/ts_" + language + ".tar.gz";
+    std::string tmpDir = "/tmp/ts_" + language;
+    std::filesystem::create_directories(tmpDir);
+
+    std::string repoUrl = "https://github.com/tree-sitter/tree-sitter-" + language;
+    std::string tarUrl = repoUrl + "/archive/refs/heads/master.tar.gz";
+    std::string curlCmd = "curl -sL " + tarUrl + " -o " + tmpTar;
+    system(curlCmd.c_str());
+
+    std::string tarCmd = "tar -xzf " + tmpTar + " -C " + tmpDir + " --strip-components=1";
+    system(tarCmd.c_str());
+
+    std::cout << "Compiling " << language << " plugin..." << std::endl;
+
+    std::string parserCmd = "cc -c -fPIC -O3 " + tmpDir + "/src/parser.c -I " + tmpDir + "/src -o " + tmpDir + "/parser.o";
+    system(parserCmd.c_str());
+
+    std::string linkCmd = "c++ -shared -fPIC -O3 -o " + pluginFile + " " + tmpDir + "/parser.o";
+
+    if (std::filesystem::exists(tmpDir + "/src/scanner.cc")) {
+        std::string scannerCmd =
+            "c++ -c -fPIC -O3 " + tmpDir + "/src/scanner.cc -I " + tmpDir + "/src -o " + tmpDir + "/scanner.o";
+        system(scannerCmd.c_str());
+        linkCmd += " " + tmpDir + "/scanner.o";
+    } else if (std::filesystem::exists(tmpDir + "/src/scanner.c")) {
+        std::string scannerCmd = "cc -c -fPIC -O3 " + tmpDir + "/src/scanner.c -I " + tmpDir + "/src -o " + tmpDir + "/scanner.o";
+        system(scannerCmd.c_str());
+        linkCmd += " " + tmpDir + "/scanner.o";
+    }
+
+    system(linkCmd.c_str());
+
+    std::filesystem::remove_all(tmpDir);
+    std::filesystem::remove(tmpTar);
+
+    std::cout << "Successfully installed " << language << " plugin!" << std::endl;
+    return pluginFile;
+}
 
 void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer, bool &running,
                      app::AppState &appState) {
@@ -146,7 +210,9 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     SDL_Color pureWhite = {255, 255, 255, 255};
     auto glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), pureWhite);
 
-    text::SyntaxEngine syntaxEngine;
+    const std::string targetLang = getFileExtension(appState.filepath);
+    std::string pluginPath = getOrInstallLanguage(targetLang);
+    text::SyntaxEngine syntaxEngine(targetLang, pluginPath);
 
     bool dirty = true;
     input::VimEngine vimEngine;
@@ -211,7 +277,6 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             }
             std::cout << " | Cursor: " << buffer.getCursor() << " | Lines: " << buffer.getNumberOfLines() << " |\n";
 
-            // ADDED: Re-parse the AST before we draw
             syntaxEngine.parse(buffer.getText());
 
             ui::drawBackground(appState, config);
@@ -219,7 +284,6 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             SDL_Rect editorViewport = {0, config.layout.top_padding, appState.window_width,
                                        appState.window_height - config.layout.status_bar_height - config.layout.top_padding};
 
-            // CHANGED: Pass the syntax engine down into drawEditor
             ui::drawEditor(appState, buffer, config, fonts, typesetter, editorViewport, *glyphCache, syntaxEngine);
             ui::drawStatusBar(appState, config, fonts, vimEngine.getMode(), vimEngine.getActiveCommand());
             SDL_RenderPresent(appState.renderer);
@@ -228,7 +292,6 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
         watcher.check();
 
         if (fonts.updateFontFamily(config.font.family, config.font.size)) {
-            // CHANGED: Ensure pureWhite is applied when font changes
             glyphCache = std::make_unique<ui::GlyphCache>(appState.renderer, fonts.getFont(), pureWhite);
             dirty = true;
         }
@@ -280,7 +343,7 @@ int main(int argc, char *argv[]) {
         appState.filepath = argv[1];
         platform::readFile(argv[1], original_content);
     } else {
-        appState.filepath = "untitled.txt";
+        appState.filepath = "untitled.cpp";
     }
 
     if (!original_content.empty() && original_content.back() == '\n') {

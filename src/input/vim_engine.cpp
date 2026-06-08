@@ -1,4 +1,5 @@
 #include <blip/input/vim_engine.hpp>
+#include <iostream>
 
 namespace input {
 
@@ -179,6 +180,9 @@ std::vector<Action> VimEngine::handleInsertMode(const SDL_Event &event) {
         break;
     case SDLK_UP:
         actions.push_back({ActionType::MoveUp});
+        break;
+    case SDLK_TAB:
+        actions.push_back({ActionType::InsertText, "    "});
         break;
     }
     return actions;

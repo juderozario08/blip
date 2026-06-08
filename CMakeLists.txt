@@ -24,12 +24,9 @@ add_subdirectory(third_party/SDL2_ttf)
 
 # Tree-sitter source definitions
 set(TS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/tree-sitter")
-set(TS_CPP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/tree-sitter-cpp")
 
 set(TS_SOURCES
     "${TS_ROOT}/lib/src/lib.c"
-    "${TS_CPP_ROOT}/src/parser.c"
-    "${TS_CPP_ROOT}/src/scanner.c"
 )
 
 set(CORE_SOURCES
@@ -68,8 +65,6 @@ function(add_blip_executable name entry_point)
     target_include_directories(${name} PRIVATE
         include
         "${TS_ROOT}/lib/include"
-        "${TS_CPP_ROOT}/src"
-        "${TS_ROOT}/lib/src"
     )
 
     target_link_libraries(${name}
@@ -77,6 +72,7 @@ function(add_blip_executable name entry_point)
             SDL2-static
             SDL2_ttf
             ${PLATFORM_LIBS}
+            ${CMAKE_DL_LIBS}
     )
 endfunction()
 

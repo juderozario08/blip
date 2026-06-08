@@ -8,7 +8,7 @@ namespace text {
 
 class SyntaxEngine {
   public:
-    SyntaxEngine();
+    SyntaxEngine(const std::string &languageName, const std::string &libraryPath);
     ~SyntaxEngine();
 
     SyntaxEngine(const SyntaxEngine &) = delete;
@@ -20,5 +20,8 @@ class SyntaxEngine {
   private:
     TSParser *parser = nullptr;
     TSTree *tree = nullptr;
+
+    void *libraryHandle = nullptr;
 };
+
 }

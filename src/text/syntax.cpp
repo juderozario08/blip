@@ -1,19 +1,46 @@
 #include <blip/text/syntax.hpp>
+#include <dlfcn.h>
+#include <iostream>
 
 extern "C" const TSLanguage *tree_sitter_cpp();
 
 namespace text {
 
-SyntaxEngine::SyntaxEngine() {
+typedef const TSLanguage *(*LanguageFactory)();
+
+SyntaxEngine::SyntaxEngine(const std::string &languageName, const std::string &libraryPath) {
     parser = ts_parser_new();
-    ts_parser_set_language(parser, tree_sitter_cpp());
+    libraryHandle = dlopen(libraryPath.c_str(), RTLD_LAZY);
+
+    if (!libraryHandle) {
+        std::cerr << "[SyntaxEngine] Failed to load plugin: " << dlerror() << std::endl;
+        return;
+    }
+    std::string functionName = "tree_sitter_" + languageName;
+    auto getLanguage = (LanguageFactory)dlsym(libraryHandle, functionName.c_str());
+    if (!getLanguage) {
+        std::cerr << "[SyntaxEngine] Failed to find function: " << functionName << std::endl;
+        dlclose(libraryHandle);
+        libraryHandle = nullptr;
+        return;
+    }
+    const TSLanguage *language = getLanguage();
+    ts_parser_set_language(parser, language);
+    std::cout << "[SyntaxEngine] Successfully loaded " << languageName << " parser!" << std::endl;
 }
 
 SyntaxEngine::~SyntaxEngine() {
-    if (tree)
+    if (tree) {
         ts_tree_delete(tree);
-    if (parser)
+    }
+
+    if (parser) {
         ts_parser_delete(parser);
+    }
+
+    if (libraryHandle) {
+        dlclose(libraryHandle);
+    }
 }
 
 void SyntaxEngine::parse(const std::string &sourceText) {
