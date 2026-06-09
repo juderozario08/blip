@@ -51,7 +51,6 @@ static void drawLine(app::AppState &appState, const text::VisualLine &line, int 
     for (char c : lineNumStr) {
         const auto &glyph = glyphCache.getGlyph(c);
         if (glyph.texture) {
-            // FIX: Tint line numbers grey so they don't inherit syntax colors from the previous line
             SDL_SetTextureColorMod(glyph.texture, 100, 100, 100);
             SDL_Rect dest = {current_x, draw_y, glyph.width, glyph.height};
             SDL_RenderCopy(appState.renderer, glyph.texture, nullptr, &dest);
@@ -121,32 +120,32 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
 
     SDL_RenderSetClipRect(appState.renderer, &viewport);
 
-    auto lines = typesetter.layout(buffer, config);
     auto [cursorX, cursorY] = typesetter.getCursorPixelPos(buffer, config, fonts);
     int lineHeight = config.font.size + 2;
 
     updateCamera(appState, cursorY, lineHeight, viewport, config);
 
+    size_t startLine = std::max(0, appState.scroll_y / lineHeight);
+    size_t visibleCount = (viewport.h / lineHeight) + 2;
+    size_t endLine = std::min(totalLines, startLine + visibleCount);
+
+    auto lines = typesetter.layoutRange(buffer, config, startLine, endLine);
+
     bool hasSelection = buffer.hasSelection();
     auto [selStart, selEnd] = buffer.getSelectionRange();
 
-    int lineCount = 1;
-    size_t currentCharIdx = 0;
+    int lineCount = startLine + 1;
+
+    size_t currentCharIdx = buffer.getLineStartByte(startLine);
 
     for (const auto &line : lines) {
         size_t currentLineLength = line.text.length() + 1;
         int draw_y = viewport.y + line.y_pixel_offset - appState.scroll_y;
 
-        if (draw_y + lineHeight < viewport.y) {
-            lineCount++;
-            currentCharIdx += currentLineLength;
-            continue;
-        }
         if (draw_y > viewport.y + viewport.h) {
             break;
         }
 
-        // ADDED: Pass syntaxEngine down
         drawLine(appState, line, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd, currentCharIdx,
                  glyphCache, syntaxEngine);
 
@@ -157,6 +156,8 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
     int next_y_offset = 0;
     if (!lines.empty()) {
         next_y_offset = lines.back().y_pixel_offset + lineHeight;
+    } else {
+        next_y_offset = startLine * lineHeight; // Fallback if file is totally empty
     }
 
     while (lineCount <= totalLines) {
@@ -169,7 +170,6 @@ void drawEditor(app::AppState &appState, buffer::EditorBuffer &buffer, config::E
         if (draw_y + lineHeight >= viewport.y) {
             text::VisualLine emptyLine;
             emptyLine.text = "";
-            // ADDED: Pass syntaxEngine down
             drawLine(appState, emptyLine, lineCount, draw_y, viewport, config, lineHeight, hasSelection, selStart, selEnd,
                      currentCharIdx, glyphCache, syntaxEngine);
         }

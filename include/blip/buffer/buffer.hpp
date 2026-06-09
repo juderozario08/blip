@@ -63,6 +63,10 @@ class EditorBuffer {
     std::pair<size_t, size_t> getSelectionRange() const;
     std::string getSelectedText() const;
 
+    void computeLineOffset();
+    std::string getLineText(size_t lineIndex) const;
+    size_t getLineStartByte(size_t lineIndex) const;
+
   private:
     PieceTable table;
     size_t cursor_pos;
@@ -75,5 +79,6 @@ class EditorBuffer {
 
     std::vector<EditRecord> undo_stack;
     std::vector<EditRecord> redo_stack;
+    std::vector<size_t> line_offsets;
 };
 }

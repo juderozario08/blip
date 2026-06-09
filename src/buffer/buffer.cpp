@@ -259,8 +259,9 @@ void EditorBuffer::insertNewLinePrev() {
 
 void EditorBuffer::cursorForward(const std::string &delimiter) {
     size_t len = table.getTotalLength();
-    if (len == 0 || cursor_pos >= len - 1)
+    if (len == 0 || cursor_pos >= len - 1) {
         return;
+    }
 
     auto getChar = [&](size_t pos) -> char {
         auto ch = table.getCharacterFromCursor(pos);
@@ -413,5 +414,41 @@ std::string EditorBuffer::getSelectedText() const {
         return "";
 
     return full_text.substr(start, end - start);
+}
+
+void EditorBuffer::computeLineOffset() {
+    line_offsets.clear();
+    line_offsets.push_back(0);
+
+    std::string fullText = getText();
+    for (size_t i = 0; i < fullText.length(); i++) {
+        if (fullText[i] == '\n') {
+            line_offsets.push_back(i + 1);
+        }
+    }
+}
+
+std::string EditorBuffer::getLineText(size_t lineIndex) const {
+    if (lineIndex >= line_offsets.size()) {
+        return "";
+    }
+
+    size_t startByte = line_offsets[lineIndex];
+    size_t endByte = (lineIndex + 1 < line_offsets.size()) ? line_offsets[lineIndex + 1] - 1 : table.getTotalLength();
+    std::string lineText = "";
+    for (size_t i = startByte; i < endByte; ++i) {
+        auto ch = table.getCharacterFromCursor(i);
+        if (ch) {
+            lineText += *ch;
+        }
+    }
+    return lineText;
+}
+
+size_t EditorBuffer::getLineStartByte(size_t lineIndex) const {
+    if (lineIndex >= line_offsets.size()) {
+        return 0;
+    }
+    return line_offsets[lineIndex];
 }
 }

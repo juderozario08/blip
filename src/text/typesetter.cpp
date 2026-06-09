@@ -60,4 +60,19 @@ std::pair<int, int> Typesetter::getCursorPixelPos(buffer::EditorBuffer &buffer, 
 
     return {xOffset, yOffset};
 }
+
+std::vector<VisualLine> Typesetter::layoutRange(const buffer::EditorBuffer &buffer, const config::EditorConfig &config,
+                                                size_t startLine, size_t endLine) {
+    std::vector<VisualLine> lines;
+    int lineHeight = config.font.size + 2;
+
+    for (size_t i = startLine; i < endLine; i++) {
+        VisualLine vLine;
+        vLine.text = buffer.getLineText(i);
+        vLine.y_pixel_offset = i * lineHeight;
+        lines.push_back(vLine);
+    }
+    return lines;
+}
+
 }

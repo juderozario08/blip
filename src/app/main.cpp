@@ -215,6 +215,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
     text::SyntaxEngine syntaxEngine(targetLang, pluginPath);
 
     bool dirty = true;
+    bool text_changed = true;
     input::VimEngine vimEngine;
     text::Typesetter typesetter;
 
@@ -240,6 +241,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                         dispatchActions(actions, buffer, running, appState);
                         action_taken = true;
                     }
+                    text_changed = true;
                 } else if (event.type == SDL_KEYDOWN && config.input.vim_mode) {
                     auto actions = vimEngine.handleKeyDown(event);
                     if (!actions.empty()) {
@@ -256,6 +258,11 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
         if (dirty) {
             dirty = false;
+
+            if (text_changed) {
+                syntaxEngine.parse(buffer.getText());
+                text_changed = false;
+            }
 
             std::cout << "| Mode: ";
             switch (vimEngine.getMode()) {
