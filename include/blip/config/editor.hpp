@@ -47,7 +47,8 @@ typedef struct UI {
 typedef struct Preference {
     Uint16 tab_width;
     AutoFormatOpts auto_format;
-    bool bracket_matching, auto_close_brackets, word_wrap, trim_trailing_whitespace_on_save, highlight_active_scope, auto_indent;
+    bool bracket_matching, auto_close_brackets, word_wrap, trim_trailing_whitespace_on_save, highlight_active_scope, auto_indent,
+        syntax_highlighting;
 } Preference;
 
 typedef struct Input {
@@ -159,6 +160,7 @@ inline constexpr const char *WORD_WRAP = "word_wrap";
 inline constexpr const char *TRIM_TRAILING_WHITESPACE_ON_SAVE = "trim_trailing_whitespace_on_save";
 inline constexpr const char *HIGHLIGHT_ACTIVE_SCOPE = "highlight_active_scope";
 inline constexpr const char *AUTO_INDENT = "auto_indent";
+inline constexpr const char *SYNTAX_HIGHLIGHTING = "syntax_highlighting";
 }
 
 namespace input {
@@ -236,6 +238,7 @@ inline constexpr const bool WORD_WRAP = false;
 inline constexpr const bool TRIM_TRAILING_WHITESPACE_ON_SAVE = true;
 inline constexpr const bool HIGHLIGHT_ACTIVE_SCOPE = true;
 inline constexpr const bool AUTO_INDENT = true;
+inline constexpr const bool SYNTAX_HIGHLIGHTING = true;
 }
 
 namespace input {

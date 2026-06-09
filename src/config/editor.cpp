@@ -357,6 +357,8 @@ void handlePreferenceConfigUpdates(std::string key, std::string value, EditorCon
         handleBoolUpdate(value, &state.preference.highlight_active_scope, defaults::preference::HIGHLIGHT_ACTIVE_SCOPE);
     } else if (key == constants::preference::AUTO_INDENT) {
         handleBoolUpdate(value, &state.preference.auto_indent, defaults::preference::AUTO_INDENT);
+    } else if (key == constants::preference::SYNTAX_HIGHLIGHTING) {
+        handleBoolUpdate(value, &state.preference.syntax_highlighting, defaults::preference::SYNTAX_HIGHLIGHTING);
     }
 }
 void handleInputConfigUpdates(std::string key, std::string value, EditorConfig &state) {

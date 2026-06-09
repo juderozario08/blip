@@ -16,5 +16,7 @@ class Typesetter {
     Typesetter();
     std::vector<VisualLine> layout(buffer::EditorBuffer &buffer, config::EditorConfig &config);
     std::pair<int, int> getCursorPixelPos(buffer::EditorBuffer &buffer, config::EditorConfig &config, FontManager &fonts);
+    std::vector<VisualLine> layoutRange(const buffer::EditorBuffer &buffer, const config::EditorConfig &config, size_t startLine,
+                                        size_t endLine);
 };
 }

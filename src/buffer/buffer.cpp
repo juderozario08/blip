@@ -211,20 +211,31 @@ std::pair<size_t, size_t> EditorBuffer::getCursorPosition2D() const {
 }
 
 void EditorBuffer::clampVimNormal() {
-    std::string text = getText();
-    if (text.empty())
+    size_t len = table.getTotalLength();
+    if (len == 0) {
         return;
+    }
 
-    bool has_trailing_newline = (text.back() == '\n');
-    size_t max_cursor = has_trailing_newline ? text.length() : text.length() - 1;
+    auto last_char = table.getCharacterFromCursor(len - 1);
+    bool has_trailing_newline = (last_char && *last_char == '\n');
+    size_t max_cursor = has_trailing_newline ? len : len - 1;
 
-    if (cursor_pos > max_cursor)
+    if (cursor_pos > max_cursor) {
         cursor_pos = max_cursor;
-    if (cursor_pos == text.length())
+    }
+    if (cursor_pos == len) {
         return;
+    }
 
-    if (text[cursor_pos] == '\n') {
-        bool is_blank_line = (cursor_pos == 0) || (text[cursor_pos - 1] == '\n');
+    auto curr_char = table.getCharacterFromCursor(cursor_pos);
+    if (curr_char && *curr_char == '\n') {
+        bool is_blank_line = (cursor_pos == 0);
+        if (!is_blank_line) {
+            auto prev_char = table.getCharacterFromCursor(cursor_pos - 1);
+            if (prev_char && *prev_char == '\n') {
+                is_blank_line = true;
+            }
+        }
         if (!is_blank_line) {
             cursor_pos--;
         }
@@ -259,8 +270,9 @@ void EditorBuffer::insertNewLinePrev() {
 
 void EditorBuffer::cursorForward(const std::string &delimiter) {
     size_t len = table.getTotalLength();
-    if (len == 0 || cursor_pos >= len - 1)
+    if (len == 0 || cursor_pos >= len - 1) {
         return;
+    }
 
     auto getChar = [&](size_t pos) -> char {
         auto ch = table.getCharacterFromCursor(pos);
@@ -413,5 +425,30 @@ std::string EditorBuffer::getSelectedText() const {
         return "";
 
     return full_text.substr(start, end - start);
+}
+
+std::string EditorBuffer::getLineText(size_t lineIndex) const {
+    if (lineIndex >= line_starts.size()) {
+        return "";
+    }
+
+    size_t startByte = line_starts[lineIndex];
+    size_t endByte = (lineIndex + 1 < line_starts.size()) ? line_starts[lineIndex + 1] - 1 : table.getTotalLength();
+
+    std::string lineText = "";
+    for (size_t i = startByte; i < endByte; ++i) {
+        auto ch = table.getCharacterFromCursor(i);
+        if (ch) {
+            lineText += *ch;
+        }
+    }
+    return lineText;
+}
+
+size_t EditorBuffer::getLineStartByte(size_t lineIndex) const {
+    if (lineIndex >= line_starts.size()) {
+        return 0;
+    }
+    return line_starts[lineIndex];
 }
 }

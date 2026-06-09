@@ -30,24 +30,14 @@ std::vector<VisualLine> Typesetter::layout(buffer::EditorBuffer &buffer, config:
 
 std::pair<int, int> Typesetter::getCursorPixelPos(buffer::EditorBuffer &buffer, config::EditorConfig &config,
                                                   FontManager &fonts) {
-    std::string rawText = buffer.getText();
-    size_t cursorIndex = buffer.getCursor();
-
-    int lineIndex = 0;
-    size_t startOfLine = 0;
-
-    for (size_t i = 0; i < cursorIndex && i < rawText.length(); ++i) {
-        if (rawText[i] == '\n') {
-            lineIndex++;
-            startOfLine = i + 1;
-        }
-    }
-
+    auto [row, col] = buffer.getCursorPosition2D();
+    std::string lineText = buffer.getLineText(row);
     std::string textBeforeCursor = "";
-    if (cursorIndex > startOfLine) {
-        textBeforeCursor = rawText.substr(startOfLine, cursorIndex - startOfLine);
+    if (col <= lineText.length()) {
+        textBeforeCursor = lineText.substr(0, col);
+    } else {
+        textBeforeCursor = lineText;
     }
-
     int xOffset = 0;
     if (!textBeforeCursor.empty()) {
         if (TTF_Font *font = fonts.getFont()) {
@@ -55,9 +45,22 @@ std::pair<int, int> Typesetter::getCursorPixelPos(buffer::EditorBuffer &buffer, 
             TTF_SizeUTF8(font, textBeforeCursor.c_str(), &xOffset, &unusedHeight);
         }
     }
-
-    int yOffset = lineIndex * config.font.size;
-
+    int yOffset = row * (config.font.size + 2);
     return {xOffset, yOffset};
 }
+
+std::vector<VisualLine> Typesetter::layoutRange(const buffer::EditorBuffer &buffer, const config::EditorConfig &config,
+                                                size_t startLine, size_t endLine) {
+    std::vector<VisualLine> lines;
+    int lineHeight = config.font.size + 2;
+
+    for (size_t i = startLine; i < endLine; i++) {
+        VisualLine vLine;
+        vLine.text = buffer.getLineText(i);
+        vLine.y_pixel_offset = i * lineHeight;
+        lines.push_back(vLine);
+    }
+    return lines;
+}
+
 }

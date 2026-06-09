@@ -63,6 +63,9 @@ class EditorBuffer {
     std::pair<size_t, size_t> getSelectionRange() const;
     std::string getSelectedText() const;
 
+    std::string getLineText(size_t lineIndex) const;
+    size_t getLineStartByte(size_t lineIndex) const;
+
   private:
     PieceTable table;
     size_t cursor_pos;
