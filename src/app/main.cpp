@@ -89,8 +89,10 @@ std::string getOrInstallLanguage(const std::string &language) {
     return pluginFile;
 }
 
-void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer, bool &running,
-                     app::AppState &appState) {
+bool dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBuffer &buffer, config::EditorConfig &config,
+                     bool &running, app::AppState &appState) {
+    bool buffer_modified = false;
+
     for (const auto &action : actions) {
         for (int i = 0; i < action.count; i++) {
             switch (action.type) {
@@ -126,33 +128,51 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
                 break;
             case input::ActionType::InsertText:
                 buffer.insertText(action.payload);
+                buffer_modified = true;
                 break;
             case input::ActionType::DeleteChar:
                 buffer.deleteChar();
+                buffer_modified = true;
                 break;
             case input::ActionType::Backspace:
                 buffer.backspace(1);
+                buffer_modified = true;
                 break;
             case input::ActionType::NewLineNext:
                 buffer.insertNewLineNext();
+                buffer_modified = true;
                 break;
             case input::ActionType::NewLinePrev:
                 buffer.insertNewLinePrev();
+                buffer_modified = true;
+                break;
+            case input::ActionType::EnableSyntax:
+                config.preference.syntax_highlighting = true;
+                break;
+            case input::ActionType::DisableSyntax:
+                config.preference.syntax_highlighting = false;
+                break;
+            case input::ActionType::ToggleSyntax:
+                config.preference.syntax_highlighting = !config.preference.syntax_highlighting;
                 break;
             case input::ActionType::Undo:
                 buffer.undo();
+                buffer_modified = true;
                 break;
             case input::ActionType::Redo:
                 buffer.redo();
+                buffer_modified = true;
                 break;
             case input::ActionType::CommitUndo:
                 buffer.commit();
                 break;
             case input::ActionType::InsertBlankLineAbove:
                 buffer.insertBlankLineAboveStay();
+                buffer_modified = true;
                 break;
             case input::ActionType::InsertBlankLineBelow:
                 buffer.insertBlankLineBelowStay();
+                buffer_modified = true;
                 break;
             case input::ActionType::ClampNormal:
                 buffer.clampVimNormal();
@@ -172,13 +192,13 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
                 }
                 break;
             }
-
             case input::ActionType::Paste: {
                 if (SDL_HasClipboardText()) {
                     char *clipboardText = SDL_GetClipboardText();
                     if (clipboardText) {
                         buffer.insertText(std::string(clipboardText));
                         SDL_free(clipboardText);
+                        buffer_modified = true;
                     }
                 }
                 break;
@@ -197,6 +217,7 @@ void dispatchActions(const std::vector<input::Action> &actions, buffer::EditorBu
             }
         }
     }
+    return buffer_modified;
 }
 
 void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config::EditorConfig &config,
@@ -216,6 +237,9 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
 
     bool dirty = true;
     bool text_changed = true;
+
+    Uint32 lastEditTime = 0;
+
     input::VimEngine vimEngine;
     text::Typesetter typesetter;
 
@@ -238,14 +262,19 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                 if (event.type == SDL_TEXTINPUT) {
                     auto actions = vimEngine.handleTextInput(event.text.text);
                     if (!actions.empty()) {
-                        dispatchActions(actions, buffer, running, appState);
+                        if (dispatchActions(actions, buffer, config, running, appState)) {
+                            text_changed = true;
+                            lastEditTime = SDL_GetTicks();
+                        }
                         action_taken = true;
                     }
-                    text_changed = true;
                 } else if (event.type == SDL_KEYDOWN && config.input.vim_mode) {
                     auto actions = vimEngine.handleKeyDown(event);
                     if (!actions.empty()) {
-                        dispatchActions(actions, buffer, running, appState);
+                        if (dispatchActions(actions, buffer, config, running, appState)) {
+                            text_changed = true;
+                            lastEditTime = SDL_GetTicks();
+                        }
                         action_taken = true;
                     }
                 }
@@ -256,13 +285,14 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             }
         }
 
+        if (text_changed && config.preference.syntax_highlighting && (SDL_GetTicks() - lastEditTime > 500)) {
+            syntaxEngine.parse(buffer.getText());
+            text_changed = false;
+            dirty = true;
+        }
+
         if (dirty) {
             dirty = false;
-
-            if (text_changed) {
-                syntaxEngine.parse(buffer.getText());
-                text_changed = false;
-            }
 
             std::cout << "| Mode: ";
             switch (vimEngine.getMode()) {
@@ -283,8 +313,6 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
                 break;
             }
             std::cout << " | Cursor: " << buffer.getCursor() << " | Lines: " << buffer.getNumberOfLines() << " |\n";
-
-            syntaxEngine.parse(buffer.getText());
 
             ui::drawBackground(appState, config);
 

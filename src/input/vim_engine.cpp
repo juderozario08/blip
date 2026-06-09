@@ -25,20 +25,26 @@ std::vector<Action> VimEngine::handleTextInput(const std::string &text) {
             active_command.clear();
         } else if (text == "i") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
         } else if (text == "I") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
             actions.push_back({ActionType::MoveStartOfLine});
         } else if (text == "a") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
             actions.push_back({ActionType::MoveRight});
         } else if (text == "A") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
             actions.push_back({ActionType::MoveEndOfLine});
         } else if (text == "o") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
             actions.push_back({ActionType::NewLineNext});
         } else if (text == "O") {
             mode = VimMode::INSERT;
+            actions.push_back({ActionType::CommitUndo});
             actions.push_back({ActionType::NewLinePrev});
         } else if (text == "v") {
             mode = VimMode::VISUAL;
@@ -125,6 +131,7 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         actions.push_back({ActionType::Undo});
         break;
     case SDLK_x:
+        actions.push_back({ActionType::CommitUndo});
         actions.push_back({ActionType::DeleteChar});
         break;
     case SDLK_0:
@@ -141,6 +148,7 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         }
         break;
     case SDLK_p:
+        actions.push_back({ActionType::CommitUndo});
         actions.push_back({ActionType::Paste});
         break;
     }
@@ -285,6 +293,12 @@ std::vector<Action> VimEngine::handleCommandMode(const SDL_Event &event) {
         } else if (active_command == "wq") {
             actions.push_back({ActionType::SaveFile, ""});
             actions.push_back({ActionType::Quit, ""});
+        } else if (active_command == "syntax on") {
+            actions.push_back({ActionType::EnableSyntax, ""});
+        } else if (active_command == "syntax off") {
+            actions.push_back({ActionType::DisableSyntax, ""});
+        } else if (active_command == "syntax toggle") {
+            actions.push_back({ActionType::ToggleSyntax, ""});
         } else if (active_command.rfind("w ", 0) == 0) {
             actions.push_back({ActionType::SaveFile, active_command.substr(2)});
         }
