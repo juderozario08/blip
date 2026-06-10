@@ -101,7 +101,6 @@ std::vector<Action> VimEngine::handleNormalMode(const SDL_Event &event) {
         command_buffer = "";
     }
 
-    // STANDARD BINDINGS
     std::string delimiters = isShift ? " " : " .@+-/:(){}[]&,;";
 
     switch (event.key.keysym.sym) {

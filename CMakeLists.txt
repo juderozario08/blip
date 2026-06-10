@@ -38,7 +38,6 @@ set(CORE_SOURCES
     src/text/typesetter.cpp
     src/input/vim_engine.cpp
     src/ui/renderer.cpp
-    src/ui/window.cpp
     src/platform/system.cpp
     src/ui/glyph_cache.cpp
     src/text/syntax.cpp

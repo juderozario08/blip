@@ -279,12 +279,15 @@ void EditorBuffer::cursorForward(const std::string &delimiter) {
         return ch ? *ch : '\0';
     };
     auto getClass = [&](char c) -> int {
-        if (c == '\0')
+        if (c == '\0') {
             return -1;
-        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+        }
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
             return 0;
-        if (delimiter.find(c) != std::string::npos)
+        }
+        if (delimiter.find(c) != std::string::npos) {
             return 1;
+        }
         return 2;
     };
 
@@ -297,12 +300,14 @@ void EditorBuffer::cursorForward(const std::string &delimiter) {
         cursor_pos++;
     }
     while (cursor_pos < len) {
-        if (getClass(getChar(cursor_pos)) != 0)
+        if (getClass(getChar(cursor_pos)) != 0) {
             break;
+        }
         cursor_pos++;
     }
-    if (cursor_pos >= len)
+    if (cursor_pos >= len) {
         cursor_pos = len - 1;
+    }
     setCursor(cursor_pos);
 }
 

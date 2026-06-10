@@ -285,7 +285,7 @@ void eventLoop(app::AppState &appState, platform::ConfigWatcher &watcher, config
             }
         }
 
-        if (text_changed && config.preference.syntax_highlighting && (SDL_GetTicks() - lastEditTime > 500)) {
+        if (text_changed && config.preference.syntax_highlighting && (SDL_GetTicks() - lastEditTime > 10)) {
             syntaxEngine.parse(buffer.getText());
             text_changed = false;
             dirty = true;
